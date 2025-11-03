@@ -5,7 +5,7 @@ from sqlalchemy import Column
 from sqlalchemy.dialects import postgresql
 from sqlmodel import Field, Relationship, SQLModel
 
-from app.database.enums import (
+from .enums import (
     ActivityCycle,
     DietType,
     OrganismType,
