@@ -2,7 +2,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
 from sqlmodel import SQLModel
 
-engine = create_async_engine("sqlite+aiosqlite:///sqlite.db")
+engine = create_async_engine("sqlite+aiosqlite:///./sqlite.db")
 
 
 async def create_db_tables():
