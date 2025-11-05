@@ -80,9 +80,9 @@ class Organism(SQLModel, table=True):
     health: float = 100.0
     pregnant: bool = False
 
-    # Ecosystem Relationship
-    ecosystem_id: Optional[UUID] = Field(default=None, foreign_key="ecosystem.id")
-    ecosystem: Optional["EcoSystem"] = Relationship(
+    # ecosystem Relationship
+    eco_system_id: Optional[UUID] = Field(default=None, foreign_key="ecosystem.id")
+    ecosystem: Optional["Ecosystem"] = Relationship(
         back_populates="animals", sa_relationship_kwargs={"lazy": "selectin"}
     )
 
@@ -115,12 +115,12 @@ class Plant(SQLModel, table=True):
     health: float = 100.0
     fruiting: bool = False
 
-    # Ecosystem relationship
+    # ecosystem relationship
     ecosystem_id: Optional[UUID] = Field(default=None, foreign_key="ecosystem.id")
-    ecosystem: Optional["EcoSystem"] = Relationship(back_populates="plants")
+    ecosystem: Optional["Ecosystem"] = Relationship(back_populates="plants")
 
 
-class EcoSystem(SQLModel, table=True):
+class Ecosystem(SQLModel, table=True):
     id: UUID = Field(sa_column=Column(postgresql.UUID, index=True, primary_key=True))
     name: str
     animals: List["Organism"] = Relationship(

@@ -1,4 +1,4 @@
-# 🌍 Ecosystem Interaction Lists
+# 🌍 ecosystem Interaction Lists
 ACTIONS_UNIVERSAL = [
     "drink_water",  # Drink water — basic hydration
     "eat",  # Eat according to diet

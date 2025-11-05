@@ -32,3 +32,9 @@ class SocialBehavior(str, Enum):
     solitary = "solitary"
     pack = "pack"
     herd = "herd"
+
+
+class Speed(str, Enum):
+    slow = "slow"
+    normal = "normal"
+    fast = "fast"
