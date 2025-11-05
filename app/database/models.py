@@ -19,6 +19,11 @@ class PredationLink(SQLModel, table=True):
     prey_id: UUID = Field(foreign_key="organism.id", primary_key=True)
 
 
+class PollinationLink(SQLModel, table=True):
+    pollinator_id: UUID = Field(foreign_key="organism.id", primary_key=True)
+    plant_id: UUID = Field(foreign_key="plant.id", primary_key=True)
+
+
 class Organism(SQLModel, table=True):
     id: UUID = Field(default_factory=uuid4, primary_key=True)
     name: str
@@ -39,15 +44,29 @@ class Organism(SQLModel, table=True):
     food_sources: Optional[str] = None
 
     # Interactions
-    predators: List["Organism"] = Relationship(
-        back_populates="prey", link_model=PredationLink
+    predator: List["Organism"] = Relationship(
+        back_populates="prey",
+        link_model=PredationLink,
+        sa_relationship_kwargs={
+            "primaryjoin": "Organism.id==PredationLink.predator_id",
+            "secondaryjoin": "Organism.id==PredationLink.prey_id",
+            "foreign_keys": "[PredationLink.predator_id, PredationLink.prey_id]",
+        },
     )
     prey: List["Organism"] = Relationship(
-        back_populates="predator", link_model=PredationLink
+        back_populates="predator",
+        link_model=PredationLink,
+        sa_relationship_kwargs={
+            "primaryjoin": "Organism.id==PredationLink.prey_id",
+            "secondaryjoin": "Organism.id==PredationLink.predator_id",
+            "foreign_keys": "[PredationLink.predator_id, PredationLink.prey_id]",
+        },
     )
     weaknessMin: Optional[str] = None
     weaknessMax: Optional[str] = None
-    pollination_target: Optional[str] = None
+    pollination_target: Optional[List["Plant"]] = Relationship(
+        back_populates="pollinators", link_model=PollinationLink
+    )
 
     # Behavior
     activity_cycle: Optional[ActivityCycle] = None  # day, night...
@@ -89,10 +108,7 @@ class Plant(SQLModel, table=True):
 
     # Interactions
     pollinators: Optional[List["Organism"]] = Relationship(
-        back_populates="pollination_target"
-    )
-    consumed_by: Optional[List["Organism"]] = Relationship(
-        back_populates="food_sources"
+        back_populates="pollination_target", link_model=PollinationLink
     )
 
     # Current state
@@ -116,6 +132,6 @@ class EcoSystem(SQLModel, table=True):
         sa_relationship_kwargs={"lazy": "selectin", "cascade": "all, delete-orphan"},
     )
     water_available: float
-    food_available: float
+    food_available: float = 0
     minimum_water_to_add_per_simulation: int
     max_water_to_add_per_simulation: int

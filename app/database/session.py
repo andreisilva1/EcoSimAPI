@@ -7,7 +7,6 @@ engine = create_async_engine("sqlite+aiosqlite:///./sqlite.db")
 
 async def create_db_tables():
     async with engine.begin() as connection:
-        from .models import Organism, Plant, EcoSystem  # noqa: I001
 
         await connection.run_sync(SQLModel.metadata.create_all)
 
