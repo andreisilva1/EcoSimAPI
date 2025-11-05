@@ -5,7 +5,7 @@ from sqlalchemy import UUID, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.schemas.ecosystem import AddOrganismToEcoSystem, CreateEcoSystem
-from app.database.models import Ecosystem, Organism
+from app.database.models import Ecosystem, EcosystemOrganism, Organism
 
 
 class EcoSystemService:
@@ -13,13 +13,11 @@ class EcoSystemService:
         self.session = session
 
     async def get(self, eco_system_id: UUID):
-        ecosystem = await self.session.get(
-            Ecosystem, eco_system_id, options=[joinedload(Ecosystem.animals)]
-        )
+        ecosystem = await self.session.get(Ecosystem, eco_system_id, joinedload=[])
         return ecosystem
 
     async def add(self, ecosystem: CreateEcoSystem):
-        new_eco_system = ecosystem(id=uuid4(), **ecosystem.model_dump())
+        new_eco_system = Ecosystem(id=uuid4(), **ecosystem.model_dump())
         self.session.add(new_eco_system)
         await self.session.commit()
         return new_eco_system
@@ -42,10 +40,11 @@ class EcoSystemService:
             select(Organism).where(Organism.name == organism_name)
         )
         organism = organism_result.scalar_one_or_none()
-        if organism and organism not in ecosystem.animals:
-            ecosystem.animals.append(organism)
-            organism.eco_system_id = ecosystem.id
+        if organism:
+            new_relation = EcosystemOrganism(
+                organism_id=organism.id, ecosystem_id=ecosystem.id
+            )
+            self.session.add(new_relation)
             await self.session.commit()
-            await self.session.refresh(ecosystem)
 
-        return {"message": "ok"}
+        return ecosystem.organism_links
