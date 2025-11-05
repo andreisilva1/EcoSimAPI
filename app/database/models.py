@@ -11,6 +11,7 @@ from .enums import (
     OrganismType,
     PlantType,
     SocialBehavior,
+    Speed,
 )
 
 
@@ -83,7 +84,7 @@ class Organism(SQLModel, table=True):
 
     # Behavior
     activity_cycle: Optional[ActivityCycle] = None  # day, night...
-    speed: Optional[float] = None
+    speed: Optional[Speed] = Speed.normal
     territory_size: Optional[float] = None
     social_behavior: Optional[SocialBehavior] = None  # solitary, pack, herd
 

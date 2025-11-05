@@ -1,5 +1,5 @@
 from uuid import uuid4
-from sqlalchemy.orm import joinedload
+
 from fastapi import HTTPException, status
 from sqlalchemy import UUID, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -13,7 +13,7 @@ class EcoSystemService:
         self.session = session
 
     async def get(self, eco_system_id: UUID):
-        ecosystem = await self.session.get(Ecosystem, eco_system_id, joinedload=[])
+        ecosystem = await self.session.get(Ecosystem, eco_system_id)
         return ecosystem
 
     async def add(self, ecosystem: CreateEcoSystem):
