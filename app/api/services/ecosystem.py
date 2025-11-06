@@ -5,7 +5,7 @@ from sqlalchemy import UUID, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.schemas.ecosystem import AddOrganismToEcoSystem, CreateEcoSystem
-from app.database.models import Ecosystem, EcosystemOrganism, Organism
+from app.database.models import Ecosystem, Organism
 
 
 class EcoSystemService:
@@ -43,18 +43,11 @@ class EcoSystemService:
         organism = organism_result.scalar_one_or_none()
 
         if organism:
-            new_relation = EcosystemOrganism(
-                organism_id=organism.id,
-                ecosystem_id=ecosystem.id,
-                hunger=0,
-                thirst=0,
-                health=100,
-                pregnant=False,
-                ecosystem=ecosystem,
-                organism=organism,
-            )
-            self.session.add(new_relation)
+            new_organism_to_this_ecosystem = organism.model_copy()
+            new_organism_to_this_ecosystem.id = uuid4()
+            ecosystem.organisms.append(new_organism_to_this_ecosystem)
             await self.session.commit()
-
-        return new_relation
-        return ecosystem.organism_links
+        return {
+            "message": f"""{new_organism_to_this_ecosystem.name}
+            added to the ecosystem {ecosystem.name}"""
+        }

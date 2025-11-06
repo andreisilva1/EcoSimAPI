@@ -15,19 +15,6 @@ from .enums import (
 )
 
 
-class EcosystemOrganism(SQLModel, table=True):
-    ecosystem_id: UUID = Field(foreign_key="ecosystem.id", primary_key=True)
-    organism_id: UUID = Field(foreign_key="organism.id", primary_key=True)
-
-    hunger: Optional[float] = Field(default=0.0)
-    thirst: Optional[float] = Field(default=0.0)
-    health: Optional[float] = Field(default=100.0)
-    pregnant: Optional[bool] = Field(default=False)
-
-    ecosystem: Optional["Ecosystem"] = Relationship(back_populates="organism_links")
-    organism: Optional["Organism"] = Relationship(back_populates="ecosystem_links")
-
-
 class PredationLink(SQLModel, table=True):
     predator_id: UUID = Field(foreign_key="organism.id", primary_key=True)
     prey_id: UUID = Field(foreign_key="organism.id", primary_key=True)
@@ -88,10 +75,16 @@ class Organism(SQLModel, table=True):
     territory_size: Optional[float] = None
     social_behavior: Optional[SocialBehavior] = None  # solitary, pack, herd
 
-    ecosystem_links: List["EcosystemOrganism"] = Relationship(
-        back_populates="organism",
-        sa_relationship_kwargs={"lazy": "selectin"},
+    ecosystem_id: UUID = Field(foreign_key="ecosystem.id", nullable=True)
+    ecosystem: "Ecosystem" = Relationship(
+        back_populates="organisms", sa_relationship_kwargs={"lazy": "selectin"}
     )
+
+    # Uniques for each ecosystem they are added
+    hunger: Optional[float] = Field(default=0.0)
+    thirst: Optional[float] = Field(default=0.0)
+    health: Optional[float] = Field(default=100.0)
+    pregnant: Optional[bool] = Field(default=False)
 
 
 class Plant(SQLModel, table=True):
@@ -122,8 +115,6 @@ class Plant(SQLModel, table=True):
     health: float = 100.0
     fruiting: bool = False
 
-    # ecosystem relationship
-
 
 class Ecosystem(SQLModel, table=True):
     id: UUID = Field(sa_column=Column(postgresql.UUID, index=True, primary_key=True))
@@ -134,6 +125,7 @@ class Ecosystem(SQLModel, table=True):
     minimum_water_to_add_per_simulation: int
     max_water_to_add_per_simulation: int
 
-    organism_links: Optional[List["EcosystemOrganism"]] = Relationship(
-        back_populates="ecosystem"
+    organisms: List[Organism] = Relationship(
+        back_populates="ecosystem",
+        sa_relationship_kwargs={"lazy": "selectin", "cascade": "all, delete-orphan"},
     )

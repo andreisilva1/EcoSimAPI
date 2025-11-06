@@ -1,7 +1,6 @@
-from typing import List, Optional
-from uuid import UUID
+from typing import Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
 
 class BaseOrganism(BaseModel):
@@ -21,7 +20,6 @@ class BaseOrganism(BaseModel):
     weaknessMax: Optional[str] = None
     pollination_target: Optional[str] = None
     territory_size: Optional[float] = None
-    ecosystem_links: List[UUID] = Field(default_factory=list)
 
 
 class CreateOrganism(BaseOrganism):
