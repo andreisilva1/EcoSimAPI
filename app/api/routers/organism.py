@@ -1,9 +1,12 @@
 from typing import Optional
+from uuid import UUID
 
 from fastapi import APIRouter
 
 from app.api.dependencies import OrganismServiceDep
-from app.api.schemas.organism import CreateOrganism
+from app.api.schemas.organism import (
+    CreateOrganism,
+)
 from app.database.enums import (
     ActivityCycle,
     DietType,
