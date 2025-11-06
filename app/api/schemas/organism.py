@@ -1,19 +1,11 @@
-from typing import Optional
+from typing import List, Optional
+from uuid import UUID
 
-from pydantic import BaseModel
-
-from app.database.enums import (
-    ActivityCycle,
-    DietType,
-    OrganismType,
-    SocialBehavior,
-    Speed,
-)
+from pydantic import BaseModel, Field
 
 
 class BaseOrganism(BaseModel):
     name: str
-    type: OrganismType
     weight: float
     size: float
     age: int = 0
@@ -22,17 +14,18 @@ class BaseOrganism(BaseModel):
     fertility_age: int = 1
     water_consumption: float
     food_consumption: float
-    diet_type: DietType
     food_sources: Optional[str] = None
     predators: Optional[str] = None
     preys: Optional[str] = None
     weaknessMin: Optional[str] = None
     weaknessMax: Optional[str] = None
     pollination_target: Optional[str] = None
-    activity_cycle: Optional[ActivityCycle] = None
-    speed: Optional[Speed] = Speed.normal
     territory_size: Optional[float] = None
-    social_behavior: Optional[SocialBehavior] = None
+    ecosystem_links: List[UUID] = Field(default_factory=list)
+
+
+class CreateOrganism(BaseOrganism):
+    pass
 
 
 class UpdateOrganism(BaseOrganism):

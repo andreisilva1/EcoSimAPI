@@ -58,7 +58,7 @@ class Organism(SQLModel, table=True):
     food_sources: Optional[str] = None
 
     # Interactions
-    predator: List["Organism"] = Relationship(
+    predator: Optional[List["Organism"]] = Relationship(
         back_populates="prey",
         link_model=PredationLink,
         sa_relationship_kwargs={
@@ -67,7 +67,7 @@ class Organism(SQLModel, table=True):
             "foreign_keys": "[PredationLink.predator_id, PredationLink.prey_id]",
         },
     )
-    prey: List["Organism"] = Relationship(
+    prey: Optional[List["Organism"]] = Relationship(
         back_populates="predator",
         link_model=PredationLink,
         sa_relationship_kwargs={
@@ -88,7 +88,10 @@ class Organism(SQLModel, table=True):
     territory_size: Optional[float] = None
     social_behavior: Optional[SocialBehavior] = None  # solitary, pack, herd
 
-    ecosystem_links: List["EcosystemOrganism"] = Relationship(back_populates="organism")
+    ecosystem_links: List["EcosystemOrganism"] = Relationship(
+        back_populates="organism",
+        sa_relationship_kwargs={"lazy": "selectin"},
+    )
 
 
 class Plant(SQLModel, table=True):
@@ -131,4 +134,6 @@ class Ecosystem(SQLModel, table=True):
     minimum_water_to_add_per_simulation: int
     max_water_to_add_per_simulation: int
 
-    organism_links: List["EcosystemOrganism"] = Relationship(back_populates="ecosystem")
+    organism_links: Optional[List["EcosystemOrganism"]] = Relationship(
+        back_populates="ecosystem"
+    )

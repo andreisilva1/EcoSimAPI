@@ -36,15 +36,25 @@ class EcoSystemService:
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="No ecosystem found with the provided ID.",
             )
+
         organism_result = await self.session.execute(
             select(Organism).where(Organism.name == organism_name)
         )
         organism = organism_result.scalar_one_or_none()
+
         if organism:
             new_relation = EcosystemOrganism(
-                organism_id=organism.id, ecosystem_id=ecosystem.id
+                organism_id=organism.id,
+                ecosystem_id=ecosystem.id,
+                hunger=0,
+                thirst=0,
+                health=100,
+                pregnant=False,
+                ecosystem=ecosystem,
+                organism=organism,
             )
             self.session.add(new_relation)
             await self.session.commit()
 
+        return new_relation
         return ecosystem.organism_links
