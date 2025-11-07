@@ -1,14 +1,15 @@
 from typing import AsyncIterator
-from httpx import ASGITransport, AsyncClient
+
 import pytest_asyncio
-from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
+from httpx import ASGITransport, AsyncClient
+from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
 from sqlmodel import SQLModel
 
 from app.database.session import get_session
-from main import app
+from app.main import app
 
-TEST_DATABASE_URL = "sqlite+aiosqlite:///:memory"
+TEST_DATABASE_URL = "sqlite+aiosqlite:///:memory:"
 
 engine = create_async_engine(
     TEST_DATABASE_URL, connect_args={"check_same_thread": False}
@@ -22,10 +23,10 @@ TestingSessionLocal = sessionmaker(
 @pytest_asyncio.fixture(scope="session", autouse=True)
 async def setup_database():
     async with engine.begin() as connection:
-        connection.run_sync(SQLModel.metadata.create_all)
+        await connection.run_sync(SQLModel.metadata.create_all)
         yield
     async with engine.begin() as connection:
-        connection.run_sync(SQLModel.metadata.drop_all)
+        await connection.run_sync(SQLModel.metadata.drop_all)
 
 
 @pytest_asyncio.fixture(scope="function")
