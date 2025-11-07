@@ -35,7 +35,7 @@ async def update_ecosystem_organism(
         )
 
 
-@router.get("/")
+@router.get("/{ecosystem_id}/simulate")
 async def simulate(ecosystem_id: str, service: EcoSystemServiceDep):
     if type(UUID(ecosystem_id)) is UUID:
         return await service.simulate(UUID(ecosystem_id))
