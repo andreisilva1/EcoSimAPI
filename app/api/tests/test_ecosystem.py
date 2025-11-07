@@ -13,5 +13,8 @@ async def test_create_eco_system(db_session: AsyncSession, client: AsyncClient):
     }
 
     response = await client.post("/ecosystem/", json=ecosystem_payload)
-    print(response)
     assert response.status_code == 200
+    assert response.json()["name"] == "Ecosystem test"
+    assert response.json()["water_available"] == 1000
+    assert response.json()["minimum_water_to_add_per_simulation"] == 50
+    assert response.json()["max_water_to_add_per_simulation"] == 200
