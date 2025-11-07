@@ -28,27 +28,32 @@ class OrganismService:
         speed: Optional[Speed],
         social_behavior: Optional[SocialBehavior],
     ):
-        predators_string = create_organism.predators.split(",")
-        predators_orm = []
-        if predators_string:
-            for predator in predators_string:
-                organism = await self.session.execute(
-                    select(Organism).where(
-                        str(Organism.name).upper() == predator.upper()
+        predators_orm, preys_orm = [], []
+        if create_organism.predators:
+            predators_string = create_organism.predators.split(",")
+            predators_orm = []
+            if predators_string:
+                for predator in predators_string:
+                    organism = await self.session.execute(
+                        select(Organism).where(
+                            str(Organism.name).upper() == predator.upper()
+                        )
                     )
-                )
-                if organism.scalar_one_or_none():
-                    predators_orm.append(organism)
+                    if organism.scalar_one_or_none():
+                        predators_orm.append(organism)
 
-        preys_string = create_organism.preys.split(",")
-        preys_orm = []
-        if preys_string:
-            for prey in preys_string:
-                organism = await self.session.execute(
-                    select(Organism).where(str(Organism.name).upper() == prey.upper())
-                )
-                if organism.scalar_one_or_none():
-                    preys_orm.append(organism)
+        if create_organism.preys:
+            preys_string = create_organism.preys.split(",")
+            preys_orm = []
+            if preys_string:
+                for prey in preys_string:
+                    organism = await self.session.execute(
+                        select(Organism).where(
+                            str(Organism.name).upper() == prey.upper()
+                        )
+                    )
+                    if organism.scalar_one_or_none():
+                        preys_orm.append(organism)
 
         new_organism = Organism(
             id=uuid4(),
@@ -66,15 +71,20 @@ class OrganismService:
             else SocialBehavior.pack,
         )
 
-        for predator in predators_orm:
-            new_relation = PredationLink(
-                predator_id=predator.id, prey_id=new_organism.id
-            )
-            self.session.add(new_relation)
+        if predators_orm:
+            for predator in predators_orm:
+                new_relation = PredationLink(
+                    predator_id=predator.id, prey_id=new_organism.id
+                )
+                self.session.add(new_relation)
 
-        for prey in preys_orm:
-            new_relation = PredationLink(predator_id=new_organism.id, prey_id=prey.id)
-            self.session.add(new_relation)
+        if preys_orm:
+            for prey in preys_orm:
+                new_relation = PredationLink(
+                    predator_id=new_organism.id, prey_id=prey.id
+                )
+                self.session.add(new_relation)
         self.session.add(new_organism)
         await self.session.commit()
+
         return new_organism

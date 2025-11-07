@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.schemas.ecosystem import AddOrganismToEcoSystem, CreateEcoSystem
 from app.api.schemas.organism import UpdateEcosystemOrganism
+from app.api.utils.attack_interactions import hit_chance
 from app.database.models import Ecosystem, Organism, Plant
 
 
@@ -119,3 +120,21 @@ class EcoSystemService:
                         list_entities.append(entity_in_the_ecosystem)
                     await self.session.commit()
         return {"message": f"Organism {organism_name} updated."}
+
+    async def simulate(self, ecosystem_id: UUID):
+        ecosystem = await self.get(ecosystem_id)
+        if not ecosystem:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="The provided ecosystem doesn't exist.",
+            )
+        organisms = ecosystem.organisms
+        for organism in organisms:
+            if organism.name == "Lion":
+                attacker = organism
+                for organism in organisms:
+                    if organism.name != "Lion":
+                        deffender = organism
+                        return hit_chance(
+                            attacker, deffender, True
+                        )  # Will return the % of the attacker hits the deffender
