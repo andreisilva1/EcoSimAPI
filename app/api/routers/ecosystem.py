@@ -1,7 +1,8 @@
 from uuid import UUID
+
 from fastapi import APIRouter
 
-from app.api.dependencies import EcoSystemServiceDep, OrganismServiceDep
+from app.api.dependencies import EcoSystemServiceDep
 from app.api.schemas.organism import UpdateEcosystemOrganism
 
 from ..schemas.ecosystem import AddOrganismToEcoSystem, CreateEcoSystem
