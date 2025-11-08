@@ -1,13 +1,17 @@
-from uuid import UUID
-
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter
 
 from app.api.dependencies import EcoSystemServiceDep
 from app.api.schemas.organism import UpdateEcosystemOrganism
+from app.api.utils.utils import verify_uuid
 
 from ..schemas.ecosystem import AddOrganismToEcoSystem, CreateEcoSystem
 
 router = APIRouter(prefix="/ecosystem", tags=["ecosystem"])
+
+
+@router.get("/{ecosystem_id}/simulate")
+async def simulate(ecosystem_id: str, service: EcoSystemServiceDep):
+    return await service.simulate(verify_uuid(ecosystem_id))
 
 
 @router.post("/")
@@ -29,16 +33,11 @@ async def update_ecosystem_organism(
     service: EcoSystemServiceDep,
     organism_name: str,
 ):
-    if type(UUID(ecosystem_id)) is UUID:
-        return await service.update_ecosystem_organism(
-            UUID(ecosystem_id), organism_name, updated_organism
-        )
-
-
-@router.get("/{ecosystem_id}/simulate")
-async def simulate(ecosystem_id: str, service: EcoSystemServiceDep):
-    if type(UUID(ecosystem_id)) is UUID:
-        return await service.simulate(UUID(ecosystem_id))
-    raise HTTPException(
-        status_code=status.HTTP_400_BAD_REQUEST, detail="Please provide a real UUID."
+    return await service.update_ecosystem_organism(
+        verify_uuid(ecosystem_id), organism_name, updated_organism
     )
+
+
+@router.delete("/{ecosystem_id}")
+async def delete_ecosystem(ecosystem_id: str, service: EcoSystemServiceDep):
+    return await service.delete(verify_uuid(ecosystem_id))

@@ -130,7 +130,7 @@ class EcoSystemService:
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="The provided ecosystem doesn't exist.",
             )
-        resultados = []
+        results = []
         organisms = ecosystem.organisms
         for organism in organisms:
             attacker = organism
@@ -145,18 +145,28 @@ class EcoSystemService:
             )
             successful_attack = random.random() > attack_chance
             attack_message = "Hits" if successful_attack else "Misses "
-            resultados.append(
+            results.append(
                 {
                     "attacker": attacker.name,
-                    "defensor": deffender.name,
+                    "deffender": deffender.name,
                     "attacker_hit_chance": round(attack_chance * 100, 2),
-                    "defensor_defend_chance": round((1 - attack_chance) * 100, 2),
+                    "deffender_defend_chance": round((1 - attack_chance) * 100, 2),
                     "attacker_cycle": attacker.activity_cycle,
-                    "defensor_cycle": deffender.activity_cycle,
+                    "deffender_cycle": deffender.activity_cycle,
                     "result": f"{attacker.name}: {attack_message} {deffender.name}",
                 }
             )
 
-        return resultados
+        return results
+        # Will return the % of the attacker hits the deffender
 
-    # Will return the % of the attacker hits the deffender
+    async def delete(self, ecosystem_id: UUID):
+        ecosystem = await self.get(ecosystem_id)
+        if ecosystem:
+            await self.session.delete(ecosystem)
+            await self.session.commit()
+            return {"message": "Ecosystem with the id provided deleted successfully."}
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No ecosystem found with the provided ID",
+        )
