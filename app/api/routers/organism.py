@@ -30,3 +30,8 @@ async def create_organism(
     return await service.add(
         organism, type, diet_type, activity_cycle, speed, social_behavior
     )
+
+
+@router.delete("/")
+async def delete_organism(organism_name_or_id: str, service: OrganismServiceDep):
+    return await service.delete(organism_name_or_id)

@@ -1,7 +1,7 @@
 import random
 from uuid import UUID, uuid4
 
-from fastapi import HTTPException, status
+from fastapi import HTTPException, Response, status
 from fastapi.responses import JSONResponse
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -190,20 +190,14 @@ class EcoSystemService:
         for organism in organisms:
             ecosystem.organisms.remove(organism)
         await self.session.commit()
-        return JSONResponse(
-            status_code=204,
-            content={},
-        )
+        return Response(status_code=204)
 
     async def delete(self, ecosystem_id: UUID):
         ecosystem = await self.get(ecosystem_id)
         if ecosystem:
             await self.session.delete(ecosystem)
             await self.session.commit()
-            return JSONResponse(
-                status_code=204,
-                content={},
-            )
+            return Response(status_code=204)
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="No ecosystem found with the provided ID",

@@ -1,6 +1,8 @@
 from typing import Optional
-from uuid import uuid4
+from uuid import UUID, uuid4
 
+from fastapi import HTTPException, Response, status
+from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -19,6 +21,12 @@ from app.database.models import Organism, PredationLink
 class OrganismService:
     def __init__(self, session: AsyncSession):
         self.session = session
+
+    async def get_organism_by_name(self, name: str):
+        organism = await self.session.execute(
+            select(Organism).where(Organism.name == name)
+        )
+        return organism.scalar_one_or_none()
 
     async def add(
         self,
@@ -88,4 +96,26 @@ class OrganismService:
         self.session.add(new_organism)
         await self.session.commit()
 
-        return JSONResponse(status_code=201, content={"organism_created": new_organism})
+        return JSONResponse(
+            status_code=201,
+            content=jsonable_encoder({"organism_created": new_organism}),
+        )
+
+    async def delete(self, organism_name_or_id: str):
+        organism = await self.get_organism_by_name(organism_name_or_id)
+        if not organism:
+            try:
+                organism = await self.session.get(Organism, UUID(organism_name_or_id))
+            except (ValueError, TypeError):
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="No organism found with the name or ID provided.",
+                )
+        if organism:
+            await self.session.delete(organism)
+            await self.session.commit()
+            return Response(status_code=204)
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No organism found with the name or ID provided.",
+        )
