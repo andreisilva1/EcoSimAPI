@@ -12,7 +12,7 @@ async def test_create_eco_system(db_session: AsyncSession, client: AsyncClient):
         "max_water_to_add_per_simulation": 200,
     }
 
-    response = await client.post("/ecosystem/", json=ecosystem_payload)
+    response = await client.post("/ecosystem/create", json=ecosystem_payload)
     assert response.status_code == 200
     assert response.json()["name"] == "Ecosystem test"
     assert response.json()["water_available"] == 1000
@@ -29,7 +29,7 @@ async def test_simulate_ecosystem(db_session: AsyncSession, client: AsyncClient)
         "max_water_to_add_per_simulation": 200,
     }
 
-    new_ecosystem = await client.post("/ecosystem/", json=ecosystem_payload)
+    new_ecosystem = await client.post("/ecosystem/create", json=ecosystem_payload)
     new_ecosystem_id = new_ecosystem.json()["id"]
     organisms = [
         {
@@ -108,7 +108,7 @@ async def test_simulate_ecosystem(db_session: AsyncSession, client: AsyncClient)
         )
 
         await client.post(
-            "/ecosystem/add_organism_to_a_ecosystem",
+            "/ecosystem/organism/add",
             json={
                 "eco_system_id": new_ecosystem_id,
                 "organism_name": organism["payload"]["name"],
@@ -117,3 +117,107 @@ async def test_simulate_ecosystem(db_session: AsyncSession, client: AsyncClient)
 
     response = await client.get(f"/ecosystem/{new_ecosystem_id}/simulate")
     assert response.status_code == 200
+
+
+@pytest.mark.asyncio
+async def test_delete_ecosystem(db_session: AsyncSession, client: AsyncClient):
+    ecosystem_payload = {
+        "name": "Ecosystem test",
+        "water_available": 1000,
+        "minimum_water_to_add_per_simulation": 50,
+        "max_water_to_add_per_simulation": 200,
+    }
+    ecosystem = await client.post("/ecosystem/create", json=ecosystem_payload)
+    response = await client.delete(f"/ecosystem/{ecosystem.json()['id']}")
+    assert response.status_code == 200
+
+
+@pytest.mark.asyncio
+async def test_remove_a_organism_from_a_ecosystem(
+    db_session: AsyncSession, client: AsyncClient
+):
+    ecosystem_payload = {
+        "name": "Ecosystem test",
+        "water_available": 1000,
+        "minimum_water_to_add_per_simulation": 50,
+        "max_water_to_add_per_simulation": 200,
+    }
+
+    new_ecosystem = await client.post("/ecosystem/create", json=ecosystem_payload)
+    new_ecosystem_id = new_ecosystem.json()["id"]
+    organisms = [
+        {
+            "payload": {
+                "name": "Meerkat",
+                "weight": 0.7,
+                "size": 0.5,
+                "age": 2,
+                "max_age": 14,
+                "reproduction_age": 2,
+                "fertility_rate": 3,
+                "water_consumption": 0.1,
+                "food_consumption": 0.2,
+                "food_sources": "insects",
+                "territory_size": 1.0,
+            },
+            "params": {
+                "type": "omnivore",
+                "diet_type": "omnivore",
+                "activity_cycle": "diurnal",
+                "speed": "fast",
+                "social_behavior": "herd",
+            },
+        },
+        {
+            "payload": {
+                "name": "Caracal",
+                "weight": 15,
+                "size": 1.1,
+                "age": 4,
+                "max_age": 16,
+                "reproduction_age": 3,
+                "fertility_rate": 2,
+                "water_consumption": 0.5,
+                "food_consumption": 3,
+                "food_sources": "rodents, birds",
+                "territory_size": 5,
+            },
+            "params": {
+                "type": "predator",
+                "diet_type": "carnivore",
+                "activity_cycle": "nocturnal",
+                "speed": "fast",
+                "social_behavior": "solitary",
+            },
+        },
+    ]
+
+    organisms_name_and_ids = []
+    for organism in organisms:
+        new_organism = await client.post(
+            "/organism/",
+            json=organism["payload"],
+            params=organism["params"],
+        )
+        organisms_name_and_ids.append(
+            {"id": new_organism.json()["id"], "name": new_organism.json()["name"]}
+        )
+
+        await client.post(
+            "/ecosystem/organism/add",
+            json={
+                "eco_system_id": new_ecosystem_id,
+                "organism_name": new_organism.json()["name"],
+            },
+        )
+
+    response_name = await client.delete(
+        f"/ecosystem/{new_ecosystem_id}/{organisms_name_and_ids[0]['name']}/remove"
+    )
+
+    response_id = await client.delete(
+        f"/ecosystem/{new_ecosystem_id}/{organisms_name_and_ids[1]['id']}/remove"
+    )
+
+    assert response_name.status_code == 200
+    assert response_id.status_code == 200

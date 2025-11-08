@@ -29,6 +29,13 @@ async def setup_database():
         await connection.run_sync(SQLModel.metadata.drop_all)
 
 
+@pytest_asyncio.fixture(scope="function", autouse=True)
+async def reset_db():
+    async with engine.begin() as connection:
+        await connection.run_sync(SQLModel.metadata.drop_all)
+        await connection.run_sync(SQLModel.metadata.create_all)
+
+
 @pytest_asyncio.fixture(scope="function")
 async def db_session():
     session = TestingSessionLocal()
