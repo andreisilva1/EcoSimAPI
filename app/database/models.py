@@ -127,5 +127,5 @@ class Ecosystem(SQLModel, table=True):
 
     organisms: List[Organism] = Relationship(
         back_populates="ecosystem",
-        sa_relationship_kwargs={"lazy": "selectin", "cascade": "all, delete-orphan"},
+        sa_relationship_kwargs={"lazy": "selectin", "cascade": "save-update, merge"},
     )

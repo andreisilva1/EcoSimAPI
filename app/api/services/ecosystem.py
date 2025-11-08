@@ -1,8 +1,8 @@
 import random
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 from fastapi import HTTPException, status
-from sqlalchemy import UUID, select
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.schemas.ecosystem import AddOrganismToEcoSystem, CreateEcoSystem
@@ -18,6 +18,11 @@ class EcoSystemService:
 
     async def get(self, eco_system_id: UUID):
         ecosystem = await self.session.get(Ecosystem, eco_system_id)
+        if not ecosystem:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="No ecosystem found with the provided ID.",
+            )
         return ecosystem
 
     async def add(self, ecosystem: CreateEcoSystem):
@@ -58,11 +63,6 @@ class EcoSystemService:
         )
 
         ecosystem = await self.get(eco_system_id)
-        if not ecosystem:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="No ecosystem found with the provided ID.",
-            )
 
         organism = await self.extract_organism_by_name(organism_name)
 
@@ -125,11 +125,7 @@ class EcoSystemService:
 
     async def simulate(self, ecosystem_id: UUID):
         ecosystem = await self.get(ecosystem_id)
-        if not ecosystem:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="The provided ecosystem doesn't exist.",
-            )
+
         results = []
         organisms = ecosystem.organisms
         for organism in organisms:
@@ -159,6 +155,33 @@ class EcoSystemService:
 
         return results
         # Will return the % of the attacker hits the deffender
+
+    async def remove_organism_from_a_ecosystem(
+        self, ecosystem_id: UUID, organism_name_or_id: str
+    ):
+        ecosystem = await self.get(ecosystem_id)
+        try:
+            organism_id = UUID(organism_name_or_id)
+        except (ValueError, TypeError):
+            organism_id = None
+        organisms = [
+            organism
+            for organism in ecosystem.organisms
+            if (
+                organism.id == organism_id or organism.name == organism_name_or_id
+                if organism_id
+                else organism.name == organism_name_or_id
+            )
+        ]
+        if not organisms:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="No organism found in that ecosystem with the ID or name provided.",
+            )
+        for organism in organisms:
+            ecosystem.organisms.remove(organism)
+        await self.session.commit()
+        return {"message": "Organisms successfully deleted from that ecosystem."}
 
     async def delete(self, ecosystem_id: UUID):
         ecosystem = await self.get(ecosystem_id)
