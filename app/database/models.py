@@ -124,7 +124,8 @@ class Ecosystem(SQLModel, table=True):
     food_available: float = 0
     minimum_water_to_add_per_simulation: int
     max_water_to_add_per_simulation: int
-
+    cycle: ActivityCycle = Field(default=ActivityCycle.diurnal)
+    days: int = Field(default=0)
     organisms: List[Organism] = Relationship(
         back_populates="ecosystem",
         sa_relationship_kwargs={"lazy": "selectin", "cascade": "save-update, merge"},

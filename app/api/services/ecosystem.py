@@ -162,6 +162,18 @@ class EcoSystemService:
                     "result": f"{attacker.name}: {attack_message} {deffender.name}",
                 }
             )
+        actual_cycle = ecosystem.cycle
+        if actual_cycle == ActivityCycle.diurnal:
+            ecosystem.cycle = ActivityCycle.nocturnal
+
+        elif actual_cycle == ActivityCycle.nocturnal:
+            ecosystem.cycle = ActivityCycle.crepuscular
+
+        elif actual_cycle == ActivityCycle.crepuscular:
+            ecosystem.cycle = ActivityCycle.diurnal
+            ecosystem.days += 1
+        await self.session.commit()
+        await self.session.refresh(ecosystem)
 
         return JSONResponse(
             status_code=200,
