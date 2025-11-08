@@ -13,11 +13,16 @@ async def test_create_eco_system(db_session: AsyncSession, client: AsyncClient):
     }
 
     response = await client.post("/ecosystem/create", json=ecosystem_payload)
-    assert response.status_code == 200
-    assert response.json()["name"] == "Ecosystem test"
-    assert response.json()["water_available"] == 1000
-    assert response.json()["minimum_water_to_add_per_simulation"] == 50
-    assert response.json()["max_water_to_add_per_simulation"] == 200
+    assert response.status_code == 201
+    assert response.json()["ecosystem_created"]["name"] == "Ecosystem test"
+    assert response.json()["ecosystem_created"]["water_available"] == 1000
+    assert (
+        response.json()["ecosystem_created"]["minimum_water_to_add_per_simulation"]
+        == 50
+    )
+    assert (
+        response.json()["ecosystem_created"]["max_water_to_add_per_simulation"] == 200
+    )
 
 
 @pytest.mark.asyncio
@@ -30,7 +35,7 @@ async def test_simulate_ecosystem(db_session: AsyncSession, client: AsyncClient)
     }
 
     new_ecosystem = await client.post("/ecosystem/create", json=ecosystem_payload)
-    new_ecosystem_id = new_ecosystem.json()["id"]
+    new_ecosystem_id = new_ecosystem.json()["ecosystem_created"]["id"]
     organisms = [
         {
             "payload": {
@@ -102,7 +107,7 @@ async def test_simulate_ecosystem(db_session: AsyncSession, client: AsyncClient)
 
     for organism in organisms:
         await client.post(
-            "/organism/",
+            "/organism/create",
             json=organism["payload"],
             params=organism["params"],
         )
@@ -128,8 +133,10 @@ async def test_delete_ecosystem(db_session: AsyncSession, client: AsyncClient):
         "max_water_to_add_per_simulation": 200,
     }
     ecosystem = await client.post("/ecosystem/create", json=ecosystem_payload)
-    response = await client.delete(f"/ecosystem/{ecosystem.json()['id']}")
-    assert response.status_code == 200
+    response = await client.delete(
+        f"/ecosystem/{ecosystem.json()['ecosystem_created']['id']}"
+    )
+    assert response.status_code == 204
 
 
 @pytest.mark.asyncio
@@ -144,7 +151,7 @@ async def test_remove_a_organism_from_a_ecosystem(
     }
 
     new_ecosystem = await client.post("/ecosystem/create", json=ecosystem_payload)
-    new_ecosystem_id = new_ecosystem.json()["id"]
+    new_ecosystem_id = new_ecosystem.json()["ecosystem_created"]["id"]
     organisms = [
         {
             "payload": {
@@ -195,19 +202,22 @@ async def test_remove_a_organism_from_a_ecosystem(
     organisms_name_and_ids = []
     for organism in organisms:
         new_organism = await client.post(
-            "/organism/",
+            "/organism/create",
             json=organism["payload"],
             params=organism["params"],
         )
         organisms_name_and_ids.append(
-            {"id": new_organism.json()["id"], "name": new_organism.json()["name"]}
+            {
+                "id": new_organism.json()["organism_created"]["id"],
+                "name": new_organism.json()["organism_created"]["name"],
+            }
         )
 
         await client.post(
             "/ecosystem/organism/add",
             json={
                 "eco_system_id": new_ecosystem_id,
-                "organism_name": new_organism.json()["name"],
+                "organism_name": new_organism.json()["organism_created"]["name"],
             },
         )
 
@@ -219,5 +229,5 @@ async def test_remove_a_organism_from_a_ecosystem(
         f"/ecosystem/{new_ecosystem_id}/{organisms_name_and_ids[1]['id']}/remove"
     )
 
-    assert response_name.status_code == 200
-    assert response_id.status_code == 200
+    assert response_name.status_code == 204
+    assert response_id.status_code == 204

@@ -2,6 +2,7 @@ import random
 from uuid import UUID, uuid4
 
 from fastapi import HTTPException, Response, status
+from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -30,7 +31,10 @@ class EcoSystemService:
         new_eco_system = Ecosystem(id=uuid4(), **ecosystem.model_dump())
         self.session.add(new_eco_system)
         await self.session.commit()
-        return new_eco_system
+        return JSONResponse(
+            status_code=201,
+            content=jsonable_encoder({"ecosystem_created": new_eco_system}),
+        )
 
     async def extract_organism_by_name(self, name: str):
         organism = await self.session.execute(

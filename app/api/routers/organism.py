@@ -17,7 +17,7 @@ from app.database.enums import (
 router = APIRouter(prefix="/organism", tags=["Organism"])
 
 
-@router.post("/")
+@router.post("/create")
 async def create_organism(
     organism: CreateOrganism,
     type: OrganismType,
@@ -32,6 +32,6 @@ async def create_organism(
     )
 
 
-@router.delete("/")
+@router.delete("/{organism_name_or_id}/delete")
 async def delete_organism(organism_name_or_id: str, service: OrganismServiceDep):
     return await service.delete(organism_name_or_id)
