@@ -1,6 +1,7 @@
 from typing import Optional
 from uuid import uuid4
 
+from fastapi.responses import JSONResponse
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -87,4 +88,4 @@ class OrganismService:
         self.session.add(new_organism)
         await self.session.commit()
 
-        return new_organism
+        return JSONResponse(status_code=201, content={"organism_created": new_organism})

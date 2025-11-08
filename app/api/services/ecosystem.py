@@ -2,6 +2,7 @@ import random
 from uuid import UUID, uuid4
 
 from fastapi import HTTPException, status
+from fastapi.responses import JSONResponse
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -76,10 +77,13 @@ class EcoSystemService:
         new_organism_to_this_ecosystem.id = uuid4()
         ecosystem.organisms.append(new_organism_to_this_ecosystem)
         await self.session.commit()
-        return {
-            "message": f"""{new_organism_to_this_ecosystem.name}
+        return JSONResponse(
+            status_code=201,
+            content={
+                "message": f"""{new_organism_to_this_ecosystem.name}
             added to the ecosystem {ecosystem.name}"""
-        }
+            },
+        )
 
     async def update_ecosystem_organism(
         self, ecosystem_id, organism_name, updated_organism: UpdateEcosystemOrganism
@@ -121,7 +125,9 @@ class EcoSystemService:
                     for entity_in_the_ecosystem in entities_in_the_ecosystem:
                         list_entities.append(entity_in_the_ecosystem)
                     await self.session.commit()
-        return {"message": f"Organism {organism_name} updated."}
+        return JSONResponse(
+            status_code=200, content={"message": f"Organism {organism_name} updated."}
+        )
 
     async def simulate(self, ecosystem_id: UUID):
         ecosystem = await self.get(ecosystem_id)
@@ -153,7 +159,10 @@ class EcoSystemService:
                 }
             )
 
-        return results
+        return JSONResponse(
+            status_code=200,
+            content={"results": results},
+        )
         # Will return the % of the attacker hits the deffender
 
     async def remove_organism_from_a_ecosystem(
@@ -181,14 +190,20 @@ class EcoSystemService:
         for organism in organisms:
             ecosystem.organisms.remove(organism)
         await self.session.commit()
-        return {"message": "Organisms successfully deleted from that ecosystem."}
+        return JSONResponse(
+            status_code=204,
+            content={},
+        )
 
     async def delete(self, ecosystem_id: UUID):
         ecosystem = await self.get(ecosystem_id)
         if ecosystem:
             await self.session.delete(ecosystem)
             await self.session.commit()
-            return {"message": "Ecosystem with the id provided deleted successfully."}
+            return JSONResponse(
+                status_code=204,
+                content={},
+            )
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="No ecosystem found with the provided ID",
