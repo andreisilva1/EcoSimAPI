@@ -7,7 +7,11 @@ from fastapi.responses import JSONResponse
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.schemas.ecosystem import AddOrganismToEcoSystem, CreateEcoSystem
+from app.api.schemas.ecosystem import (
+    AddOrganismToEcoSystem,
+    CreateEcoSystem,
+    UpdateEcoSystem,
+)
 from app.api.schemas.organism import UpdateEcosystemOrganism
 from app.api.utils.attack_interactions import hit_chance
 from app.database.enums import ActivityCycle
@@ -18,8 +22,8 @@ class EcoSystemService:
     def __init__(self, session: AsyncSession):
         self.session = session
 
-    async def get(self, eco_system_id: UUID):
-        ecosystem = await self.session.get(Ecosystem, eco_system_id)
+    async def get(self, ecosystem_id: UUID):
+        ecosystem = await self.session.get(Ecosystem, ecosystem_id)
         if not ecosystem:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
@@ -34,6 +38,27 @@ class EcoSystemService:
         return JSONResponse(
             status_code=201,
             content=jsonable_encoder({"ecosystem_created": new_eco_system}),
+        )
+
+    async def update_ecosystem(
+        self, ecosystem_id: UUID, update_ecosystem: UpdateEcoSystem
+    ):
+        ecosystem = await self.get(ecosystem_id)
+        updates = {}
+        for key, value in update_ecosystem.model_dump().items():
+            if value:
+                updates[key] = value
+        if not updates:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="No update fields has been filled.",
+            )
+        for key, value in updates.items():
+            setattr(ecosystem, key, value)
+        await self.session.commit()
+        await self.session.refresh(ecosystem)
+        return JSONResponse(
+            status_code=200, content=jsonable_encoder({"updated_ecosystem": ecosystem})
         )
 
     async def extract_organism_by_name(self, name: str):

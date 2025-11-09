@@ -1,10 +1,10 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Path
 
 from app.api.dependencies import EcoSystemServiceDep
 from app.api.schemas.organism import UpdateEcosystemOrganism
 from app.api.utils.utils import verify_uuid
 
-from ..schemas.ecosystem import AddOrganismToEcoSystem, CreateEcoSystem
+from ..schemas.ecosystem import AddOrganismToEcoSystem, CreateEcoSystem, UpdateEcoSystem
 
 router = APIRouter(prefix="/ecosystem", tags=["ecosystem"])
 
@@ -45,6 +45,13 @@ async def update_ecosystem_organism(
     return await service.update_ecosystem_organism(
         verify_uuid(ecosystem_id), organism_name, updated_organism
     )
+
+
+@router.patch("/{ecosystem_id}")
+async def update_ecosystem_infos(
+    ecosystem_id: str, update_infos: UpdateEcoSystem, service: EcoSystemServiceDep
+):
+    return await service.update_ecosystem(verify_uuid(ecosystem_id), update_infos)
 
 
 @router.delete("/{ecosystem_id}")
