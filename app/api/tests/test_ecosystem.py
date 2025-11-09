@@ -140,7 +140,7 @@ async def test_delete_ecosystem(db_session: AsyncSession, client: AsyncClient):
 
 
 @pytest.mark.asyncio
-async def test_remove_a_organism_from_a_ecosystem(
+async def test_remove_organism_from_a_ecosystem(
     db_session: AsyncSession, client: AsyncClient
 ):
     ecosystem_payload = {
@@ -231,3 +231,42 @@ async def test_remove_a_organism_from_a_ecosystem(
 
     assert response_name.status_code == 204
     assert response_id.status_code == 204
+
+
+@pytest.mark.asyncio
+async def test_update_ecosystem(db_session: AsyncSession, client: AsyncClient):
+    ecosystem_payload = {
+        "name": "Ecosystem test",
+        "water_available": 1000,
+        "minimum_water_to_add_per_simulation": 50,
+        "max_water_to_add_per_simulation": 200,
+    }
+
+    new_ecosystem = await client.post("/ecosystem/create", json=ecosystem_payload)
+    new_ecosystem_id = new_ecosystem.json()["ecosystem_created"]["id"]
+    ecosystem_update_payload = {
+        "name": "Testing the Update",
+        "water_available": 500,
+        "minimum_water_to_add_per_simulation": 100,
+        "max_water_to_add_per_simulation": 250,
+    }
+
+    response = await client.patch(
+        f"/ecosystem/{new_ecosystem_id}", json=ecosystem_update_payload
+    )
+
+    assert (
+        response.json()["updated_ecosystem"]["name"] == ecosystem_update_payload["name"]
+    )
+    assert (
+        response.json()["updated_ecosystem"]["water_available"]
+        == ecosystem_update_payload["water_available"]
+    )
+    assert (
+        response.json()["updated_ecosystem"]["minimum_water_to_add_per_simulation"]
+        == ecosystem_update_payload["minimum_water_to_add_per_simulation"]
+    )
+    assert (
+        response.json()["updated_ecosystem"]["max_water_to_add_per_simulation"]
+        == ecosystem_update_payload["max_water_to_add_per_simulation"]
+    )
