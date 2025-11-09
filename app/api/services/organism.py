@@ -82,7 +82,7 @@ class OrganismService:
         new_organism = Organism(
             id=uuid4(),
             **create_organism.model_dump(
-                exclude=["preys", "predators", "pollination_target", "ecosystem_links"]
+                exclude=["prey", "predator", "pollination_target", "ecosystem_links"]
             ),
             type=OrganismType(organism_type),
             diet_type=DietType(diet_type),
@@ -137,10 +137,12 @@ class OrganismService:
                 setattr(organism, key, value)
         await self.session.commit()
         await self.session.refresh(organism)
-        return organism
+        return JSONResponse(
+            status_code=200, content=jsonable_encoder({"updated_organism": organism})
+        )
 
     async def delete(self, organism_name_or_id: str):
-        organism = await self.get_organism_by_name(organism_name_or_id)
+        organism = await self.get_organism_by_name_or_id(organism_name_or_id)
         if not organism:
             try:
                 organism = await self.session.get(Organism, UUID(organism_name_or_id))

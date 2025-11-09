@@ -27,7 +27,22 @@ class CreateOrganism(BaseOrganism):
 
 
 class UpdateOrganism(BaseOrganism):
-    pass
+    name: str | None = None
+    weight: float | None = None
+    size: float | None = None
+    age: int | None = None
+    max_age: int | None = None
+    reproduction_age: int | None = None
+    fertility_rate: int | None = None
+    water_consumption: float | None = None
+    food_consumption: float | None = None
+    food_sources: str | None = None
+    predator: str | None = None
+    prey: str | None = None
+    weaknessMin: str | None = None
+    weaknessMax: str | None = None
+    pollination_target: str | None = None
+    territory_size: float | None = None
 
 
 class ReadOrganism(BaseOrganism):
