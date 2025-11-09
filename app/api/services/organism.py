@@ -7,7 +7,7 @@ from fastapi.responses import JSONResponse
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.schemas.organism import CreateOrganism
+from app.api.schemas.organism import CreateOrganism, UpdateOrganism
 from app.database.enums import (
     ActivityCycle,
     DietType,
@@ -22,11 +22,26 @@ class OrganismService:
     def __init__(self, session: AsyncSession):
         self.session = session
 
-    async def get_organism_by_name(self, name: str):
-        organism = await self.session.execute(
-            select(Organism).where(Organism.name == name)
-        )
-        return organism.scalar_one_or_none()
+    async def get_organism_by_name_or_id(self, organism_name_or_id: str):
+        try:
+            valid_uuid = UUID(organism_name_or_id)
+        except (ValueError, TypeError):
+            valid_uuid = None
+        finally:
+            organism = await self.session.execute(
+                select(Organism).where(
+                    (Organism.name == organism_name_or_id or Organism.id == valid_uuid)
+                    if valid_uuid
+                    else Organism.name == organism_name_or_id
+                )
+            )
+        organism = organism.scalar_one_or_none()
+        if not organism:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="No organism found with the name or ID provided.",
+            )
+        return organism
 
     async def add(
         self,
@@ -38,8 +53,8 @@ class OrganismService:
         social_behavior: Optional[SocialBehavior],
     ):
         predators_orm, preys_orm = [], []
-        if create_organism.predators:
-            predators_string = create_organism.predators.split(",")
+        if create_organism.predator:
+            predators_string = create_organism.predator.split(",")
             predators_orm = []
             if predators_string:
                 for predator in predators_string:
@@ -51,8 +66,8 @@ class OrganismService:
                     if organism.scalar_one_or_none():
                         predators_orm.append(organism)
 
-        if create_organism.preys:
-            preys_string = create_organism.preys.split(",")
+        if create_organism.prey:
+            preys_string = create_organism.prey.split(",")
             preys_orm = []
             if preys_string:
                 for prey in preys_string:
@@ -100,6 +115,29 @@ class OrganismService:
             status_code=201,
             content=jsonable_encoder({"organism_created": new_organism}),
         )
+
+    async def update_base_organism(
+        self, organism_name_or_id: str, update_organism: UpdateOrganism
+    ):
+        organism = await self.get_organism_by_name_or_id(organism_name_or_id)
+        update = {}
+        for key, value in update_organism.model_dump().items():
+            if value is not None:
+                update[key] = value
+        if not update:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="No information to update has been provided.",
+            )
+        for key, value in update.items():
+            try:
+                setattr(organism, key, value)
+            except TypeError:
+                value = value.split(",")
+                setattr(organism, key, value)
+        await self.session.commit()
+        await self.session.refresh(organism)
+        return organism
 
     async def delete(self, organism_name_or_id: str):
         organism = await self.get_organism_by_name(organism_name_or_id)

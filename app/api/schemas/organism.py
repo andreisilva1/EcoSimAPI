@@ -10,12 +10,12 @@ class BaseOrganism(BaseModel):
     age: int = 0
     max_age: int
     reproduction_age: int
-    fertility_age: int = 1
+    fertility_rate: int = 1
     water_consumption: float
     food_consumption: float
     food_sources: Optional[str] = None
-    predators: Optional[str] = None
-    preys: Optional[str] = None
+    predator: Optional[str] = None
+    prey: Optional[str] = None
     weaknessMin: Optional[str] = None
     weaknessMax: Optional[str] = None
     pollination_target: Optional[str] = None
