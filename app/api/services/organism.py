@@ -4,7 +4,7 @@ from uuid import UUID, uuid4
 from fastapi import HTTPException, Response, status
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.schemas.organism import CreateOrganism, UpdateOrganism
@@ -21,6 +21,27 @@ from app.database.models import Organism, PredationLink
 class OrganismService:
     def __init__(self, session: AsyncSession):
         self.session = session
+
+    async def get_multiple_organisms_by_name(self, organism_name: str):
+        query = await self.session.scalars(
+            select(Organism).where(
+                func.lower(Organism.name).like(f"%{organism_name.lower()}%")
+            )
+        )
+
+        organisms = query.all()
+        if not organisms:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="No organism found with the name or ID provided.",
+            )
+        return organisms
+
+    async def verify_if_organism_exists(self, organism_name):
+        organism = await self.session.execute(
+            select(Organism).where(Organism.name == organism_name)
+        )
+        return organism.scalar_one_or_none()
 
     async def get_organism_by_name_or_id(self, organism_name_or_id: str):
         try:
@@ -52,6 +73,12 @@ class OrganismService:
         speed: Optional[Speed],
         social_behavior: Optional[SocialBehavior],
     ):
+        existent_organism = await self.verify_if_organism_exists(create_organism.name)
+        if existent_organism:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="A organism with this name already exists.",
+            )
         predators_orm, preys_orm = [], []
         if create_organism.predator:
             predators_string = create_organism.predator.split(",")

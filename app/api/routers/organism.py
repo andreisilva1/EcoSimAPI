@@ -18,6 +18,11 @@ from app.database.enums import (
 router = APIRouter(prefix="/organism", tags=["Organism"])
 
 
+@router.get("/")
+async def get_organism(organism_name: str, service: OrganismServiceDep):
+    return await service.get_multiple_organisms_by_name(organism_name)
+
+
 @router.post("/create")
 async def create_organism(
     organism: CreateOrganism,

@@ -27,7 +27,7 @@ class PollinationLink(SQLModel, table=True):
 
 class Organism(SQLModel, table=True):
     id: UUID = Field(default_factory=uuid4, primary_key=True)
-    name: str
+    name: str = Field(unique=True)
     type: OrganismType  # predator, herbivore, polinizator, etc.
 
     # Physical / Demography

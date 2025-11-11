@@ -53,7 +53,7 @@ async def test_delete_organism(db_session, client: AsyncClient):
     }
 
     organism2_payload = {
-        "name": "Ant",
+        "name": "Super Ant",
         "weight": 0.000003,
         "size": 0.01,
         "age": 0,
