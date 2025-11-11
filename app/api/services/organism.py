@@ -60,7 +60,7 @@ class OrganismService:
         if not organism:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail="No organism found with the name or ID provided.",
+                detail=f"No organism found with the name or ID provided ({organism_name_or_id}).",
             )
         return organism
 

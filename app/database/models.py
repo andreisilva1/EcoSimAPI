@@ -89,7 +89,7 @@ class Organism(SQLModel, table=True):
 
 class Plant(SQLModel, table=True):
     id: UUID = Field(default_factory=uuid4, primary_key=True)
-    name: str
+    name: str = Field(unique=True)
     type: PlantType
 
     # Physical / Demography
