@@ -7,7 +7,6 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.schemas.plant import CreatePlant, UpdatePlant
-from app.api.services.organism import OrganismService
 from app.database.enums import PlantType
 from app.database.models import Organism, Plant
 
@@ -27,7 +26,9 @@ class PlantService:
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="No plant found with the name provided.",
             )
-        return plants
+        return JSONResponse(
+            status_code=200, content=jsonable_encoder({"plants": plants})
+        )
 
     async def get_plant_by_name_or_id(self, plant_name_or_id: str):
         try:

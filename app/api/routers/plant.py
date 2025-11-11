@@ -7,12 +7,12 @@ from app.database.enums import PlantType
 router = APIRouter(prefix="/plant", tags=["Plants"])
 
 
-@router.get("/")
+@router.get("/search")
 async def get_plants_by_name(plant_name: str, service: PlantServiceDep):
     return await service.get_multiple_plants_by_name(plant_name)
 
 
-@router.post("/")
+@router.post("/create")
 async def create_plant(plant: CreatePlant, type: PlantType, service: PlantServiceDep):
     return await service.add(plant, type)
 
