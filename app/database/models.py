@@ -103,8 +103,6 @@ class Plant(SQLModel, table=True):
 
     # Needs
     water_need: Optional[float] = None
-    sunlight_need: Optional[float] = None
-    nutrient_need: Optional[float] = None
 
     # Interactions
     pollinators: Optional[List["Organism"]] = Relationship(
