@@ -33,7 +33,7 @@ class OrganismService:
         if not organisms:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail="No organism found with the name or ID provided.",
+                detail="No organism found with the name provided.",
             )
         return organisms
 
