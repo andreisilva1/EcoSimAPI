@@ -139,8 +139,64 @@ async def test_update_organism(db_session: AsyncSession, client: AsyncClient):
         f"/organism/{organism_created.json()['organism_created']['id']}/update",
         json=update_payload,
     )
-    print("STATUS =", response.status_code)
-    print("JSON   =", response.json())
+
     assert response.json()["updated_organism"]["name"] == update_payload["name"]
     assert response.json()["updated_organism"]["weight"] == update_payload["weight"]
     assert response.json()["updated_organism"]["size"] == update_payload["size"]
+
+
+@pytest.mark.asyncio
+async def test_get_organism_by_name(db_session: AsyncSession, client: AsyncClient):
+    organism1_payload = {
+        "name": "Ant",
+        "weight": 0.000003,
+        "size": 0.01,
+        "age": 0,
+        "max_age": 1,
+        "reproduction_age": 0,
+        "fertility_rate": 50,
+        "water_consumption": 0.0001,
+        "food_consumption": 0.0002,
+        "food_sources": "plant matter, insects",
+        "territory_size": 0,
+    }
+
+    organism2_payload = {
+        "name": "Super Ant",
+        "weight": 0.000003,
+        "size": 0.01,
+        "age": 0,
+        "max_age": 1,
+        "reproduction_age": 0,
+        "fertility_rate": 50,
+        "water_consumption": 0.0001,
+        "food_consumption": 0.0002,
+        "food_sources": "plant matter, insects",
+        "territory_size": 0,
+    }
+
+    await client.post(
+        "/organism/create",
+        json=organism1_payload,
+        params={
+            "type": "omnivore",
+            "diet_type": "omnivore",
+            "activity_cycle": "diurnal",
+            "speed": "fast",
+            "social_behavior": "herd",
+        },
+    )
+    await client.post(
+        "/organism/create",
+        json=organism2_payload,
+        params={
+            "type": "omnivore",
+            "diet_type": "omnivore",
+            "activity_cycle": "diurnal",
+            "speed": "fast",
+            "social_behavior": "herd",
+        },
+    )
+
+    response = await client.get("/organism/?organism_name=Ant")
+    assert len(response.json()) == 2
