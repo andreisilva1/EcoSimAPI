@@ -13,9 +13,14 @@ from app.api.schemas.ecosystem import (
     UpdateEcoSystem,
 )
 from app.api.schemas.organism import UpdateEcosystemOrganism
-from app.api.utils.attack_interactions import hit_chance
-from app.database.enums import ActivityCycle
-from app.database.interactions_list import get_mapping
+from app.api.utils.interaction_functions import (
+    drink_water,
+    hunt_prey,
+    reproduce,
+    rest,
+)
+from app.database.enums import ActivityCycle, OrganismType
+from app.database.interactions_list import ACTIONS_BY_TYPE
 from app.database.models import Ecosystem, Organism, Plant
 
 
@@ -166,30 +171,39 @@ class EcoSystemService:
         organisms = ecosystem.organisms
         interaction_list = []
         for organism in organisms:
-            interaction_list.append(get_mapping(organism.type))
-            attacker = organism
-            deffender = random.choice(organisms)
-            while deffender == attacker:
-                deffender = random.choice(organisms)
-            is_night = attacker.activity_cycle
-            attack_chance = hit_chance(
-                attacker,
-                deffender,
-                True if is_night == ActivityCycle.nocturnal else False,
-            )
-            successful_attack = random.random() > attack_chance
-            attack_message = "Hits" if successful_attack else "Misses "
-            results.append(
-                {
-                    "attacker": attacker.name,
-                    "deffender": deffender.name,
-                    "attacker_hit_chance": round(attack_chance * 100, 2),
-                    "deffender_defend_chance": round((1 - attack_chance) * 100, 2),
-                    "attacker_cycle": attacker.activity_cycle,
-                    "deffender_cycle": deffender.activity_cycle,
-                    "result": f"{attacker.name}: {attack_message} {deffender.name}",
-                }
-            )
+            possible_interactions = ACTIONS_BY_TYPE[organism.type]
+            if organism.type == OrganismType.predator:
+                action = random.choice(possible_interactions)
+                if action == "hunt_prey":
+                    attacker = organism
+                    deffender = random.choice(organisms)
+                    while deffender == attacker:
+                        deffender = random.choice(organisms)
+                    results.append(hunt_prey(organism, deffender))
+                elif action == "drink_water":
+                    results.append(drink_water(ecosystem, organism))
+
+                elif action == "rest":
+                    results.append(rest(organism))
+
+                elif action == "reproduce":
+                    organism_to_reproduce = await self.session.execute(
+                        select(Organism).where(
+                            Organism.name == organism.name,
+                            Organism.id != organism.id,
+                            Organism.pregnant.is_(False),
+                        )
+                    )
+                    organism_to_reproduce = organism_to_reproduce.first()
+                    if organism_to_reproduce:
+                        results.append(reproduce([organism, organism_to_reproduce]))
+                    else:
+                        results.append(
+                            {f"No partner has been found to {organism.name}."}
+                        )
+        await self.session.commit()
+        return results
+
         actual_cycle = ecosystem.cycle
         if actual_cycle == ActivityCycle.diurnal:
             ecosystem.cycle = ActivityCycle.nocturnal
