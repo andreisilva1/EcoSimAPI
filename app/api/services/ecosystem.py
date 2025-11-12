@@ -37,6 +37,32 @@ class EcoSystemService:
             )
         return ecosystem
 
+    async def get_all_ecosystem_organisms(self, ecosystem_name_or_id: str):
+        try:
+            valid_uuid = UUID(ecosystem_name_or_id)
+        except (ValueError, TypeError):
+            valid_uuid = None
+            ecosystem = await self.session.execute(
+                select(Ecosystem).where(
+                    (
+                        Ecosystem.name == ecosystem_name_or_id
+                        or Ecosystem.id == valid_uuid
+                    )
+                    if valid_uuid
+                    else Ecosystem.name == ecosystem_name_or_id
+                )
+            )
+        ecosystem = ecosystem.scalar_one_or_none()
+        if ecosystem:
+            return JSONResponse(
+                status_code=200,
+                content=jsonable_encoder({"all_organisms": ecosystem.organisms}),
+            )
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No ecosystem found with the ID or name provided.",
+        )
+
     async def add(self, ecosystem: CreateEcoSystem):
         new_eco_system = Ecosystem(id=uuid4(), **ecosystem.model_dump())
         self.session.add(new_eco_system)
@@ -194,15 +220,13 @@ class EcoSystemService:
                             Organism.pregnant.is_(False),
                         )
                     )
-                    organism_to_reproduce = organism_to_reproduce.first()
+                    organism_to_reproduce = organism_to_reproduce.scalar_one_or_none()
                     if organism_to_reproduce:
                         results.append(reproduce([organism, organism_to_reproduce]))
                     else:
                         results.append(
                             {f"No partner has been found to {organism.name}."}
                         )
-        await self.session.commit()
-        return results
 
         actual_cycle = ecosystem.cycle
         if actual_cycle == ActivityCycle.diurnal:
@@ -219,7 +243,7 @@ class EcoSystemService:
 
         return JSONResponse(
             status_code=200,
-            content={"interaction": interaction_list},
+            content=jsonable_encoder({"interaction": results}),
         )
         # Will return the % of the attacker hits the deffender
 
