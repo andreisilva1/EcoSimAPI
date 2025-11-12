@@ -15,6 +15,7 @@ from app.api.schemas.ecosystem import (
 from app.api.schemas.organism import UpdateEcosystemOrganism
 from app.api.utils.attack_interactions import hit_chance
 from app.database.enums import ActivityCycle
+from app.database.interactions_list import get_mapping
 from app.database.models import Ecosystem, Organism, Plant
 
 
@@ -163,7 +164,9 @@ class EcoSystemService:
 
         results = []
         organisms = ecosystem.organisms
+        interaction_list = []
         for organism in organisms:
+            interaction_list.append(get_mapping(organism.type))
             attacker = organism
             deffender = random.choice(organisms)
             while deffender == attacker:
@@ -202,7 +205,7 @@ class EcoSystemService:
 
         return JSONResponse(
             status_code=200,
-            content={"results": results},
+            content={"interaction": interaction_list},
         )
         # Will return the % of the attacker hits the deffender
 
