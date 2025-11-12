@@ -66,7 +66,9 @@ class Organism(SQLModel, table=True):
     weaknessMin: Optional[str] = None
     weaknessMax: Optional[str] = None
     pollination_target: Optional[List["Plant"]] = Relationship(
-        back_populates="pollinators", link_model=PollinationLink
+        back_populates="pollinators",
+        link_model=PollinationLink,
+        sa_relationship_kwargs={"lazy": "selectin"},
     )
 
     # Behavior

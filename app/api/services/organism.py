@@ -8,6 +8,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.schemas.organism import CreateOrganism, UpdateOrganism
+from app.api.services.plant import PlantService
 from app.database.enums import (
     ActivityCycle,
     DietType,
@@ -15,7 +16,7 @@ from app.database.enums import (
     SocialBehavior,
     Speed,
 )
-from app.database.models import Organism, PredationLink
+from app.database.models import Organism, Plant, PredationLink
 
 
 class OrganismService:
@@ -108,8 +109,13 @@ class OrganismService:
 
         new_organism = Organism(
             id=uuid4(),
+            pollination_target=await self.get_pollination_targets_and_convert_to_organisms(
+                str(create_organism.pollination_target)
+            )
+            if create_organism.pollination_target
+            else [],
             **create_organism.model_dump(
-                exclude=["prey", "predator", "pollination_target", "ecosystem_links"]
+                exclude=["prey", "predator", "pollination_target"],
             ),
             type=OrganismType(organism_type),
             diet_type=DietType(diet_type),
@@ -186,3 +192,17 @@ class OrganismService:
             status_code=status.HTTP_404_NOT_FOUND,
             detail="No organism found with the name or ID provided.",
         )
+
+    async def get_pollination_targets_and_convert_to_organisms(
+        self, pollination_targets: str
+    ):
+        pollination_targets_splitted = pollination_targets.split(",")
+        pollination_targets_converted = []
+        for pollination_target in pollination_targets_splitted:
+            pollination_target = await self.session.execute(
+                select(Plant).where(Plant.name == pollination_target)
+            )
+            pollination_target = pollination_target.scalar_one_or_none()
+            if pollination_target:
+                pollination_targets_converted.append(pollination_target)
+        return pollination_targets_converted

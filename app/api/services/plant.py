@@ -99,7 +99,12 @@ class PlantService:
         self.session.add(new_plant)
         await self.session.commit()
         return JSONResponse(
-            status_code=201, content=jsonable_encoder({"created_plant": new_plant})
+            status_code=201,
+            content=jsonable_encoder(
+                {
+                    "created_plant": new_plant,
+                }
+            ),
         )
 
     async def update(self, plant_name_or_id: str, update_plant: UpdatePlant):

@@ -1,4 +1,5 @@
 import random
+from typing import List
 from uuid import UUID, uuid4
 
 from fastapi import HTTPException, Response, status
@@ -15,6 +16,7 @@ from app.api.schemas.ecosystem import (
 from app.api.schemas.organism import UpdateEcosystemOrganism
 from app.api.utils.interaction_functions import (
     drink_water,
+    graze_plants,
     hunt_prey,
     reproduce,
     rest,
@@ -116,6 +118,20 @@ class EcoSystemService:
         plant = await self.session.execute(select(Plant).where(Plant.name == name))
         return plant.scalar_one_or_none()
 
+    async def convert_pollination_target_to_plant(
+        self, pollination_target: str
+    ) -> List[Plant]:
+        pollination_target_splitted = pollination_target.split(",")
+        targets = []
+        for target in pollination_target_splitted:
+            plant = await self.session.execute(
+                select(Plant).where(Plant.name == target)
+            )
+            plant = plant.scalar_one_or_none()
+            if plant:
+                targets.append(plant)
+        return targets
+
     async def add_organism_to_a_eco_system(
         self, organism_and_eco_system: AddOrganismToEcoSystem
     ):
@@ -195,38 +211,57 @@ class EcoSystemService:
 
         results = []
         organisms = ecosystem.organisms
-        interaction_list = []
         for organism in organisms:
             possible_interactions = ACTIONS_BY_TYPE[organism.type]
-            if organism.type == OrganismType.predator:
-                action = random.choice(possible_interactions)
-                if action == "hunt_prey":
-                    attacker = organism
-                    deffender = random.choice(organisms)
-                    while deffender == attacker:
-                        deffender = random.choice(organisms)
-                    results.append(hunt_prey(organism, deffender))
-                elif action == "drink_water":
-                    results.append(drink_water(ecosystem, organism))
+            action = random.choice(possible_interactions)
+            if action == "rest":
+                results.append(rest(organism))
 
-                elif action == "rest":
-                    results.append(rest(organism))
-
-                elif action == "reproduce":
-                    organism_to_reproduce = await self.session.execute(
-                        select(Organism).where(
-                            Organism.name == organism.name,
-                            Organism.id != organism.id,
-                            Organism.pregnant.is_(False),
-                        )
+            if action == "reproduce":
+                organism_to_reproduce = await self.session.execute(
+                    select(Organism).where(
+                        Organism.name == organism.name,
+                        Organism.id != organism.id,
+                        Organism.pregnant.is_(False),
                     )
-                    organism_to_reproduce = organism_to_reproduce.scalar_one_or_none()
-                    if organism_to_reproduce:
-                        results.append(reproduce([organism, organism_to_reproduce]))
+                )
+                organism_to_reproduce = organism_to_reproduce.scalar_one_or_none()
+                if organism_to_reproduce:
+                    results.append(reproduce([organism, organism_to_reproduce]))
+                else:
+                    results.append({f"No partner has been found to {organism.name}."})
+
+            if action == "drink_water":
+                results.append(drink_water(ecosystem, organism))
+
+            if organism.type == OrganismType.predator:
+                if action == "hunt_prey":
+                    results.append(hunt_prey(organism, organisms))
+
+            elif organism.type == OrganismType.herbivore:
+                if action == "graze_plants":
+                    if not organism.pollination_target:
+                        results.append({f"No pollinators found for {organism.name}"})
                     else:
-                        results.append(
-                            {f"No partner has been found to {organism.name}."}
-                        )
+                        pollination_target = random.choice(organism.pollination_target)
+                        results.append(graze_plants(pollination_target, organism))
+
+            elif organism.type == OrganismType.herbivore:
+                if action == "find_food":
+                    action = random.choice(["hunt_prey", "graze_plants"])
+                    match action:
+                        case "hunt_prey":
+                            results.append(hunt_prey(organism, organisms))
+                        case "graze_plants":
+                            targets = await self.convert_pollination_target_to_plant(
+                                organism.pollinators
+                            )
+                            if not targets:
+                                results.append(
+                                    {f"No pollinators found for {organism.name}"}
+                                )
+                            else:
+                                results.append(graze_plants(targets, organism))
 
         actual_cycle = ecosystem.cycle
         if actual_cycle == ActivityCycle.diurnal:
