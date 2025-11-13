@@ -1,4 +1,5 @@
 from typing import Optional
+from uuid import UUID
 
 from fastapi import APIRouter
 
@@ -7,6 +8,7 @@ from app.api.schemas.organism import (
     CreateOrganism,
     UpdateOrganism,
 )
+from app.api.utils.utils import verify_uuid
 from app.database.enums import (
     ActivityCycle,
     DietType,
@@ -38,13 +40,13 @@ async def create_organism(
     )
 
 
-@router.patch("/{organism_name_or_id}/update")
+@router.patch("/{organism_id}/update")
 async def update_organism(
-    organism_name_or_id: str, update_infos: UpdateOrganism, service: OrganismServiceDep
+    organism_id: UUID, update_infos: UpdateOrganism, service: OrganismServiceDep
 ):
-    return await service.update_base_organism(organism_name_or_id, update_infos)
+    return await service.update_base_organism(organism_id, update_infos)
 
 
-@router.delete("/{organism_name_or_id}/delete")
-async def delete_organism(organism_name_or_id: str, service: OrganismServiceDep):
-    return await service.delete(organism_name_or_id)
+@router.delete("/{organism_id}/delete")
+async def delete_organism(organism_id: str, service: OrganismServiceDep):
+    return await service.delete(verify_uuid(organism_id))

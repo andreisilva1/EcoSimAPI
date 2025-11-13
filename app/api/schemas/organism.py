@@ -7,9 +7,9 @@ class BaseOrganism(BaseModel):
     name: str
     weight: float
     size: float
-    age: int = 0
-    max_age: int
-    reproduction_age: int
+    age: float = 0
+    max_age: float
+    reproduction_age: float
     fertility_rate: int = 1
     water_consumption: float
     food_consumption: float
@@ -30,9 +30,9 @@ class UpdateOrganism(BaseOrganism):
     name: str | None = None
     weight: float | None = None
     size: float | None = None
-    age: int | None = None
-    max_age: int | None = None
-    reproduction_age: int | None = None
+    age: float | None = None
+    max_age: float | None = None
+    reproduction_age: float | None = None
     fertility_rate: int | None = None
     water_consumption: float | None = None
     food_consumption: float | None = None

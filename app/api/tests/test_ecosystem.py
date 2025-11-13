@@ -164,7 +164,6 @@ async def test_remove_organism_from_a_ecosystem(
                 "fertility_rate": 3,
                 "water_consumption": 0.1,
                 "food_consumption": 0.2,
-                "food_sources": "insects",
                 "territory_size": 1.0,
             },
             "params": {
@@ -186,7 +185,6 @@ async def test_remove_organism_from_a_ecosystem(
                 "fertility_rate": 2,
                 "water_consumption": 0.5,
                 "food_consumption": 3,
-                "food_sources": "rodents, birds",
                 "territory_size": 5,
             },
             "params": {
@@ -206,6 +204,7 @@ async def test_remove_organism_from_a_ecosystem(
             json=organism["payload"],
             params=organism["params"],
         )
+
         organisms_name_and_ids.append(
             {
                 "id": new_organism.json()["organism_created"]["id"],
@@ -213,23 +212,14 @@ async def test_remove_organism_from_a_ecosystem(
             }
         )
 
-        await client.post(
-            "/ecosystem/organism/add",
-            json={
-                "eco_system_id": new_ecosystem_id,
-                "organism_name": new_organism.json()["organism_created"]["name"],
-            },
+        added_to_ecosystem = await client.post(
+            f"/ecosystem/organism/add?organism_name={new_organism.json()['organism_created']['name']}&ecosystem_id={new_ecosystem_id}",
         )
 
-    response_name = await client.delete(
-        f"/ecosystem/{new_ecosystem_id}/{organisms_name_and_ids[0]['name']}/remove"
-    )
-
     response_id = await client.delete(
-        f"/ecosystem/{new_ecosystem_id}/{organisms_name_and_ids[1]['id']}/remove"
+        f"/ecosystem/{new_ecosystem_id}/{added_to_ecosystem.json()['added_to_ecosystem']['id']}/remove"
     )
 
-    assert response_name.status_code == 204
     assert response_id.status_code == 204
 
 

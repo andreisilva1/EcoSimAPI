@@ -9,11 +9,11 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.schemas.ecosystem import (
-    AddOrganismToEcoSystem,
     CreateEcoSystem,
     UpdateEcoSystem,
 )
 from app.api.schemas.organism import UpdateEcosystemOrganism
+from app.api.services.organism import OrganismService
 from app.api.utils.interaction_functions import (
     drink_water,
     graze_plants,
@@ -44,26 +44,24 @@ class EcoSystemService:
             valid_uuid = UUID(ecosystem_name_or_id)
         except (ValueError, TypeError):
             valid_uuid = None
-            ecosystem = await self.session.execute(
-                select(Ecosystem).where(
-                    (
-                        Ecosystem.name == ecosystem_name_or_id
-                        or Ecosystem.id == valid_uuid
-                    )
-                    if valid_uuid
-                    else Ecosystem.name == ecosystem_name_or_id
-                )
+        ecosystem = await self.session.execute(
+            select(Ecosystem).where(
+                (Ecosystem.name == ecosystem_name_or_id or Ecosystem.id == valid_uuid)
+                if valid_uuid
+                else Ecosystem.name == ecosystem_name_or_id
             )
-        ecosystem = ecosystem.scalar_one_or_none()
-        if ecosystem:
-            return JSONResponse(
-                status_code=200,
-                content=jsonable_encoder({"all_organisms": ecosystem.organisms}),
-            )
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="No ecosystem found with the ID or name provided.",
         )
+        ecosystem = ecosystem.scalar_one_or_none()
+        return ecosystem.organisms
+
+    async def get_pollination_targets_in_the_ecosystem(
+        self, organism: Organism, ecosystem: Ecosystem
+    ):
+        pollination_targets_in_the_ecosystem = []
+        for target in organism.pollination_target:
+            if target in ecosystem.plants:
+                pollination_targets_in_the_ecosystem.append(target)
+        return pollination_targets_in_the_ecosystem
 
     async def add(self, ecosystem: CreateEcoSystem):
         new_eco_system = Ecosystem(id=uuid4(), **ecosystem.model_dump())
@@ -96,10 +94,10 @@ class EcoSystemService:
         )
 
     async def extract_organism_by_name(self, name: str):
-        organism = await self.session.execute(
+        organism = await self.session.scalars(
             select(Organism).where(Organism.name == name)
         )
-        return organism.scalar_one_or_none()
+        return organism.first()
 
     async def extract_organisms_from_a_specific_ecosystem_by_name(
         self, ecosystem_id: UUID, name: str
@@ -133,14 +131,9 @@ class EcoSystemService:
         return targets
 
     async def add_organism_to_a_eco_system(
-        self, organism_and_eco_system: AddOrganismToEcoSystem
+        self, ecosystem_id: UUID, organism_name: str, return_json: bool = True
     ):
-        organism_name, eco_system_id = (
-            organism_and_eco_system.organism_name,
-            organism_and_eco_system.eco_system_id,
-        )
-
-        ecosystem = await self.get(eco_system_id)
+        ecosystem = await self.get(ecosystem_id)
 
         organism = await self.extract_organism_by_name(organism_name)
 
@@ -150,17 +143,18 @@ class EcoSystemService:
                 detail="No organism found with the provided name.",
             )
 
-        new_organism_to_this_ecosystem = organism.model_copy()
-        new_organism_to_this_ecosystem.id = uuid4()
+        new_organism_to_this_ecosystem = Organism(
+            **organism.model_dump(exclude=["id"]), id=uuid4()
+        )
         ecosystem.organisms.append(new_organism_to_this_ecosystem)
         await self.session.commit()
-        return JSONResponse(
-            status_code=201,
-            content={
-                "message": f"""{new_organism_to_this_ecosystem.name}
-            added to the ecosystem {ecosystem.name}"""
-            },
-        )
+        if return_json:
+            return JSONResponse(
+                status_code=201,
+                content=jsonable_encoder(
+                    {"added_to_ecosystem": new_organism_to_this_ecosystem}
+                ),
+            )
 
     async def update_ecosystem_organism(
         self, ecosystem_id, organism_name, updated_organism: UpdateEcosystemOrganism
@@ -210,26 +204,35 @@ class EcoSystemService:
         ecosystem = await self.get(ecosystem_id)
 
         results = []
-        organisms = ecosystem.organisms
+        organisms: List[Organism] = ecosystem.organisms
         for organism in organisms:
             possible_interactions = ACTIONS_BY_TYPE[organism.type]
             action = random.choice(possible_interactions)
             if action == "rest":
                 results.append(rest(organism))
 
-            if action == "reproduce":
-                organism_to_reproduce = await self.session.execute(
-                    select(Organism).where(
-                        Organism.name == organism.name,
-                        Organism.id != organism.id,
-                        Organism.pregnant.is_(False),
+            if action == "reproduce" and organism.age >= organism.reproduction_age:
+                if not organism.pregnant:
+                    organism_to_reproduce = await self.session.scalars(
+                        select(Organism).where(
+                            Organism.name == organism.name,
+                            Organism.id != organism.id,
+                            Organism.pregnant.is_(False),
+                        )
                     )
-                )
-                organism_to_reproduce = organism_to_reproduce.scalar_one_or_none()
-                if organism_to_reproduce:
-                    results.append(reproduce([organism, organism_to_reproduce]))
+                    organism_to_reproduce = organism_to_reproduce.all()
+                    if organism_to_reproduce:
+                        results.append(reproduce(organism_to_reproduce))
+                    else:
+                        results.append(
+                            {f"No partner has been found to {organism.name}."}
+                        )
                 else:
-                    results.append({f"No partner has been found to {organism.name}."})
+                    organism.pregnant = False
+                    await self.add_organism_to_a_eco_system(
+                        ecosystem.id, organism.name, False
+                    )
+                    results.append({f"A new {organism.name} has born!"})
 
             if action == "drink_water":
                 results.append(drink_water(ecosystem, organism))
@@ -240,11 +243,15 @@ class EcoSystemService:
 
             elif organism.type == OrganismType.herbivore:
                 if action == "graze_plants":
-                    if not organism.pollination_target:
-                        results.append({f"No pollinators found for {organism.name}"})
-                    else:
-                        pollination_target = random.choice(organism.pollination_target)
-                        results.append(graze_plants(pollination_target, organism))
+                    pollination_targets_in_the_ecosystem = (
+                        await self.get_pollination_targets_in_the_ecosystem(
+                            organism, ecosystem
+                        )
+                    )
+                    pollination_target = random.choice(
+                        pollination_targets_in_the_ecosystem
+                    )
+                    results.append(graze_plants(pollination_target, organism))
 
             elif organism.type == OrganismType.herbivore:
                 if action == "find_food":
@@ -263,6 +270,17 @@ class EcoSystemService:
                             else:
                                 results.append(graze_plants(targets, organism))
 
+            if organism.health <= 0 or organism.thirst >= 100:
+                if organism.health <= 0:
+                    results.append(
+                        f"{organism.name} health reaches 0. {organism.name} is dead."
+                    )
+                if organism.thirst >= 100:
+                    results.append(
+                        f"{organism.name} thirst reaches 0. {organism.name} is dead."
+                    )
+                await OrganismService(self.session).delete(organism.id)
+
         actual_cycle = ecosystem.cycle
         if actual_cycle == ActivityCycle.diurnal:
             ecosystem.cycle = ActivityCycle.nocturnal
@@ -274,7 +292,6 @@ class EcoSystemService:
             ecosystem.cycle = ActivityCycle.diurnal
             ecosystem.days += 1
         await self.session.commit()
-        await self.session.refresh(ecosystem)
 
         return JSONResponse(
             status_code=200,
@@ -287,15 +304,16 @@ class EcoSystemService:
     ):
         ecosystem = await self.get(ecosystem_id)
         try:
-            organism_id = UUID(organism_name_or_id)
+            organism_uuid = UUID(organism_name_or_id)
         except (ValueError, TypeError):
-            organism_id = None
+            organism_uuid = None
+
         organisms = [
             organism
             for organism in ecosystem.organisms
             if (
-                organism.id == organism_id or organism.name == organism_name_or_id
-                if organism_id
+                (organism.name == organism_name_or_id or organism.id == organism_uuid)
+                if organism_uuid
                 else organism.name == organism_name_or_id
             )
         ]

@@ -27,15 +27,15 @@ class PollinationLink(SQLModel, table=True):
 
 class Organism(SQLModel, table=True):
     id: UUID = Field(default_factory=uuid4, primary_key=True)
-    name: str = Field(unique=True)
+    name: str
     type: OrganismType  # predator, herbivore, polinizator, etc.
 
     # Physical / Demography
     weight: float
     size: float
-    age: int = 0
-    max_age: int
-    reproduction_age: int
+    age: float = 0
+    max_age: float
+    reproduction_age: float
     fertility_rate: int = 1
 
     # Needs
@@ -91,15 +91,15 @@ class Organism(SQLModel, table=True):
 
 class Plant(SQLModel, table=True):
     id: UUID = Field(default_factory=uuid4, primary_key=True)
-    name: str = Field(unique=True)
+    name: str
     type: PlantType
 
     # Physical / Demography
     weight: Optional[float] = None  # biomass
     size: Optional[float] = None
-    age: int = 0
-    max_age: Optional[int] = None
-    reproduction_age: Optional[int] = None
+    age: float = 0
+    max_age: Optional[float] = None
+    reproduction_age: Optional[float] = None
     fertility_rate: Optional[int] = None  # number of sements by cycle
     population: int = 1
 
@@ -115,10 +115,15 @@ class Plant(SQLModel, table=True):
     health: float = 100.0
     fruiting: bool = False
 
+    ecosystem_id: UUID = Field(foreign_key="ecosystem.id", nullable=True)
+    ecosystem: "Ecosystem" = Relationship(
+        back_populates="plants", sa_relationship_kwargs={"lazy": "selectin"}
+    )
+
 
 class Ecosystem(SQLModel, table=True):
     id: UUID = Field(sa_column=Column(postgresql.UUID, index=True, primary_key=True))
-    name: str
+    name: str = Field(unique=True)
 
     water_available: float
     food_available: float = 0
@@ -127,6 +132,11 @@ class Ecosystem(SQLModel, table=True):
     cycle: ActivityCycle = Field(default=ActivityCycle.diurnal)
     days: int = Field(default=0)
     organisms: List[Organism] = Relationship(
+        back_populates="ecosystem",
+        sa_relationship_kwargs={"lazy": "selectin", "cascade": "save-update, merge"},
+    )
+
+    plants: List[Plant] = Relationship(
         back_populates="ecosystem",
         sa_relationship_kwargs={"lazy": "selectin", "cascade": "save-update, merge"},
     )

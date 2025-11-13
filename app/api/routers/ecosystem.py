@@ -4,7 +4,7 @@ from app.api.dependencies import EcoSystemServiceDep
 from app.api.schemas.organism import UpdateEcosystemOrganism
 from app.api.utils.utils import verify_uuid
 
-from ..schemas.ecosystem import AddOrganismToEcoSystem, CreateEcoSystem, UpdateEcoSystem
+from ..schemas.ecosystem import CreateEcoSystem, UpdateEcoSystem
 
 router = APIRouter(prefix="/ecosystem", tags=["ecosystem"])
 
@@ -28,9 +28,11 @@ async def create_eco_system(ecosystem: CreateEcoSystem, service: EcoSystemServic
 
 @router.post("/organism/add")
 async def add_organism_to_a_eco_system(
-    organism_and_eco_system: AddOrganismToEcoSystem, service: EcoSystemServiceDep
+    organism_name: str, ecosystem_id: str, service: EcoSystemServiceDep
 ):
-    return await service.add_organism_to_a_eco_system(organism_and_eco_system)
+    return await service.add_organism_to_a_eco_system(
+        verify_uuid(ecosystem_id), organism_name
+    )
 
 
 @router.delete("/{ecosystem_id}/{organism_name_or_id}/remove")

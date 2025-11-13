@@ -43,27 +43,15 @@ class OrganismService:
         )
         return organism.scalar_one_or_none()
 
-    async def get_organism_by_name_or_id(self, organism_name_or_id: str):
-        try:
-            valid_uuid = UUID(organism_name_or_id)
-        except (ValueError, TypeError):
-            valid_uuid = None
-        finally:
-            organism = await self.session.execute(
-                select(Organism).where(
-                    (
-                        func.lower(Organism.name) == organism_name_or_id.lower()
-                        or Organism.id == valid_uuid
-                    )
-                    if valid_uuid
-                    else Organism.name == organism_name_or_id
-                )
-            )
+    async def get_organism_by_id(self, organism_id: UUID):
+        organism = await self.session.execute(
+            select(Organism).where((Organism.id == organism_id))
+        )
         organism = organism.scalar_one_or_none()
         if not organism:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"No organism found with the name or ID provided ({organism_name_or_id}).",
+                detail="No organism found with the ID provided).",
             )
         return organism
 
@@ -152,9 +140,9 @@ class OrganismService:
         )
 
     async def update_base_organism(
-        self, organism_name_or_id: str, update_organism: UpdateOrganism
+        self, organism_id: UUID, update_organism: UpdateOrganism
     ):
-        organism = await self.get_organism_by_name_or_id(organism_name_or_id)
+        organism = await self.get_organism_by_id(organism_id)
         update = {}
         for key, value in update_organism.model_dump().items():
             if value is not None:
@@ -176,8 +164,8 @@ class OrganismService:
             status_code=200, content=jsonable_encoder({"updated_organism": organism})
         )
 
-    async def delete(self, organism_name_or_id: str):
-        organism = await self.get_organism_by_name_or_id(organism_name_or_id)
+    async def delete(self, organism_id: UUID):
+        organism = await self.get_organism_by_id(organism_id)
         if not organism:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,

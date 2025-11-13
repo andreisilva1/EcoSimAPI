@@ -36,7 +36,7 @@ def rest(organism: Organism):
 def reproduce(organisms: List[Organism]):
     pregnant_organism = random.choice(organisms)
     pregnant_organism.pregnant = True
-    return {f"{pregnant_organism} is now pregnant."}
+    return {f"{pregnant_organism.name} is now pregnant."}
 
 
 # PREDATORS
@@ -65,10 +65,17 @@ def hunt_prey(attacker: Organism, organisms: List[Organism]):
 
 # OMNIVORE
 def graze_plants(target: Plant, organism: Organism):
+    if not target:
+        return {f"No {target} has been found to in this ecosystem to {organism.name}."}
+
     biomass_lost, hunger = (
         round(random.random(), 2),
         random.randint(5, 20),
     )
     target.weight = biomass_lost * target.weight
     organism.hunger += hunger
+    if target.weight <= 0:
+        return {
+            f"{organism.name} graze {target.name} and recovers {hunger} hunger. {target.name} health reaches 0."
+        }
     return {f"{organism.name} graze {target.name} and recovers {hunger} hunger."}
