@@ -8,7 +8,6 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.schemas.organism import CreateOrganism, UpdateOrganism
-from app.api.services.plant import PlantService
 from app.database.enums import (
     ActivityCycle,
     DietType,
@@ -40,7 +39,7 @@ class OrganismService:
 
     async def verify_if_organism_exists(self, organism_name):
         organism = await self.session.execute(
-            select(Organism).where(Organism.name == organism_name)
+            select(Organism).where(func.lower(Organism.name) == organism_name.lower())
         )
         return organism.scalar_one_or_none()
 
@@ -52,7 +51,10 @@ class OrganismService:
         finally:
             organism = await self.session.execute(
                 select(Organism).where(
-                    (Organism.name == organism_name_or_id or Organism.id == valid_uuid)
+                    (
+                        func.lower(Organism.name) == organism_name_or_id.lower()
+                        or Organism.id == valid_uuid
+                    )
                     if valid_uuid
                     else Organism.name == organism_name_or_id
                 )
@@ -88,7 +90,7 @@ class OrganismService:
                 for predator in predators_string:
                     organism = await self.session.execute(
                         select(Organism).where(
-                            str(Organism.name).upper() == predator.upper()
+                            func.lower(Organism.name) == predator.lower()
                         )
                     )
                     if organism.scalar_one_or_none():
@@ -101,7 +103,7 @@ class OrganismService:
                 for prey in preys_string:
                     organism = await self.session.execute(
                         select(Organism).where(
-                            str(Organism.name).upper() == prey.upper()
+                            func.lower(Organism.name) == prey.lower()
                         )
                     )
                     if organism.scalar_one_or_none():
@@ -177,21 +179,13 @@ class OrganismService:
     async def delete(self, organism_name_or_id: str):
         organism = await self.get_organism_by_name_or_id(organism_name_or_id)
         if not organism:
-            try:
-                organism = await self.session.get(Organism, UUID(organism_name_or_id))
-            except (ValueError, TypeError):
-                raise HTTPException(
-                    status_code=status.HTTP_404_NOT_FOUND,
-                    detail="No organism found with the name or ID provided.",
-                )
-        if organism:
-            await self.session.delete(organism)
-            await self.session.commit()
-            return Response(status_code=204)
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="No organism found with the name or ID provided.",
-        )
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="No organism found with the name or ID provided.",
+            )
+        await self.session.delete(organism)
+        await self.session.commit()
+        return Response(status_code=204)
 
     async def get_pollination_targets_and_convert_to_organisms(
         self, pollination_targets: str
@@ -200,7 +194,9 @@ class OrganismService:
         pollination_targets_converted = []
         for pollination_target in pollination_targets_splitted:
             pollination_target = await self.session.execute(
-                select(Plant).where(Plant.name == pollination_target)
+                select(Plant).where(
+                    func.lower(Organism.name) == pollination_target.lower()
+                )
             )
             pollination_target = pollination_target.scalar_one_or_none()
             if pollination_target:
