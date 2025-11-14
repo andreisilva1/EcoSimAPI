@@ -41,26 +41,41 @@ def reproduce(organisms: List[Organism]):
 
 # PREDATORS
 def hunt_prey(attacker: Organism, organisms: List[Organism]):
+    results = []
     deffender = random.choice(organisms)
     while deffender == attacker:
         deffender = random.choice(organisms)
     is_night = attacker.activity_cycle
-    attack_chance = hit_chance(
-        attacker,
-        deffender,
-        True if is_night == ActivityCycle.nocturnal else False,
-    )
-    successful_attack = random.random() > attack_chance
-    attack_message = "Hits" if successful_attack else "Misses "
-    return {
-        "attacker": attacker.name,
-        "deffender": deffender.name,
-        "attacker_hit_chance": round(attack_chance * 100, 2),
-        "deffender_defend_chance": round((1 - attack_chance) * 100, 2),
-        "attacker_cycle": attacker.activity_cycle,
-        "deffender_cycle": deffender.activity_cycle,
-        "result": f"{attacker.name}: {attack_message} {deffender.name}",
-    }
+    reattack = True
+    while deffender.health > 0 or reattack:
+        attack_chance = hit_chance(
+            attacker,
+            deffender,
+            True if is_night == ActivityCycle.nocturnal else False,
+        )
+        successful_attack = random.random() > attack_chance
+        damage = random.randint(5, 40)
+        if successful_attack:
+            deffender.health -= random.randint(5, 40)
+        attack_message = (
+            f"Hits and cause {damage} damage to"
+            if successful_attack
+            else "Misses and cause 0 damage to"
+        )
+
+        ATTACKER_HIT_CHANCE = round(attack_chance * 100, 2)
+        DEFFENDER_DEFEND_CHANCE = round((1 - attack_chance) * 100, 2)
+        results.append(
+            {
+                "attacker": attacker.name,
+                "deffender": deffender.name,
+                "attacker_hit_chance": ATTACKER_HIT_CHANCE,
+                "deffender_defend_chance": DEFFENDER_DEFEND_CHANCE,
+                "result": f"{attacker.name}: {attack_message} {deffender.name}",
+            }
+        )
+        reattack = random.random() > DEFFENDER_DEFEND_CHANCE
+    return results
 
 
 # OMNIVORE
