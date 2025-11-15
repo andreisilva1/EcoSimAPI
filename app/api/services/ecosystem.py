@@ -206,80 +206,98 @@ class EcoSystemService:
         results = []
         organisms: List[Organism] = ecosystem.organisms
         for organism in organisms:
+            food_consumed = 0
             possible_interactions = ACTIONS_BY_TYPE[organism.type]
-            action = random.choice(possible_interactions)
-            if action == "rest":
-                results.append(rest(organism))
+            actions = random.sample(possible_interactions, 2)
+            for action in actions:
+                if (
+                    organism.health <= 0
+                    or organism.thirst >= 100
+                    or organism.hunger >= 100
+                ):
+                    results.append(await self.death_cause_and_delete_organism(organism))
+                    break
 
-            if action == "reproduce" and organism.age >= organism.reproduction_age:
-                if not organism.pregnant:
-                    organism_to_reproduce = await self.session.scalars(
-                        select(Organism).where(
-                            Organism.name == organism.name,
-                            Organism.id != organism.id,
-                            Organism.pregnant.is_(False),
-                        )
-                    )
-                    organism_to_reproduce = organism_to_reproduce.all()
-                    if organism_to_reproduce:
-                        results.append(reproduce(organism_to_reproduce))
-                    else:
-                        results.append(
-                            {f"No partner has been found to {organism.name}."}
-                        )
-                else:
-                    organism.pregnant = False
-                    await self.add_organism_to_a_eco_system(
-                        ecosystem.id, organism.name, False
-                    )
-                    results.append({f"A new {organism.name} has born!"})
+                if action == "rest":
+                    results.append(rest(organism))
 
-            if action == "drink_water":
-                results.append(drink_water(ecosystem, organism))
-
-            if organism.type == OrganismType.predator:
-                if action == "hunt_prey":
-                    results.append(hunt_prey(organism, organisms))
-
-            elif organism.type == OrganismType.herbivore:
-                if action == "graze_plants":
-                    pollination_targets_in_the_ecosystem = (
-                        await self.get_pollination_targets_in_the_ecosystem(
-                            organism, ecosystem
-                        )
-                    )
-                    pollination_target = random.choice(
-                        pollination_targets_in_the_ecosystem
-                    )
-                    results.append(graze_plants(pollination_target, organism))
-
-            elif organism.type == OrganismType.herbivore:
-                if action == "find_food":
-                    action = random.choice(["hunt_prey", "graze_plants"])
-                    match action:
-                        case "hunt_prey":
-                            results.append(hunt_prey(organism, organisms))
-                        case "graze_plants":
-                            targets = await self.convert_pollination_target_to_plant(
-                                organism.pollinators
+                if action == "reproduce" and organism.age >= organism.reproduction_age:
+                    if not organism.pregnant:
+                        organism_to_reproduce = await self.session.scalars(
+                            select(Organism).where(
+                                Organism.name == organism.name,
+                                Organism.id != organism.id,
+                                Organism.pregnant.is_(False),
                             )
-                            if not targets:
-                                results.append(
-                                    {f"No pollinators found for {organism.name}"}
-                                )
-                            else:
-                                results.append(graze_plants(targets, organism))
+                        )
+                        organism_to_reproduce = organism_to_reproduce.all()
+                        if organism_to_reproduce:
+                            results.append(reproduce(organism_to_reproduce))
+                        else:
+                            results.append(
+                                {f"No partner has been found to {organism.name}."}
+                            )
+                    else:
+                        organism.pregnant = False
+                        await self.add_organism_to_a_eco_system(
+                            ecosystem.id, organism.name, False
+                        )
+                        results.append({f"A new {organism.name} has born!"})
 
-            if organism.health <= 0 or organism.thirst >= 100:
-                if organism.health <= 0:
-                    results.append(
-                        f"{organism.name} health reaches 0. {organism.name} is dead."
-                    )
-                if organism.thirst >= 100:
-                    results.append(
-                        f"{organism.name} thirst reaches 0. {organism.name} is dead."
-                    )
-                await OrganismService(self.session).delete(organism.id)
+                if action == "drink_water":
+                    results.append(drink_water(ecosystem, organism))
+
+                if organism.type == OrganismType.predator:
+                    if action == "hunt_prey":
+                        attacker = organism
+                        deffender = random.choice(organisms)
+                        while deffender == attacker:
+                            deffender = random.choice(organisms)
+                        results.append(hunt_prey(attacker, deffender))
+                        if deffender.health <= 0:
+                            food_consumed += random.randint(
+                                0, int(deffender.weight // 2)
+                            )
+
+                elif organism.type == OrganismType.herbivore:
+                    if action == "graze_plants":
+                        pollination_targets_in_the_ecosystem = (
+                            await self.get_pollination_targets_in_the_ecosystem(
+                                organism, ecosystem
+                            )
+                        )
+                        pollination_target = random.choice(
+                            pollination_targets_in_the_ecosystem
+                        )
+                        results.append(graze_plants(pollination_target, organism))
+
+                elif organism.type == OrganismType.herbivore:
+                    if action == "find_food":
+                        action = random.choice(["hunt_prey", "graze_plants"])
+                        match action:
+                            case "hunt_prey":
+                                results.append(hunt_prey(organism, organisms))
+                            case "graze_plants":
+                                targets = (
+                                    await self.convert_pollination_target_to_plant(
+                                        organism.pollinators
+                                    )
+                                )
+                                if not targets:
+                                    results.append(
+                                        {f"No pollinators found for {organism.name}"}
+                                    )
+                                else:
+                                    results.append(graze_plants(targets, organism))
+
+            if food_consumed < organism.food_consumption:
+                HEALTH_LOST = random.randint(5, 15)
+                organism.health -= HEALTH_LOST
+                results.append(
+                    {
+                        f"{organism.name} don't eat the sufficient for the day and lost {HEALTH_LOST}"
+                    }
+                )
 
         actual_cycle = ecosystem.cycle
         if actual_cycle == ActivityCycle.diurnal:
@@ -337,3 +355,15 @@ class EcoSystemService:
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="No ecosystem found with the provided ID",
         )
+
+    async def death_cause_and_delete_organism(self, organism: Organism):
+        await self.session.delete(organism)
+        await self.session.commit()
+        if organism.health <= 0:
+            return f"{organism.name} health reaches 0. {organism.name} is dead."
+
+        if organism.thirst >= 100:
+            return f"{organism.name} thirst reaches 100. {organism.name} is dead."
+
+        if organism.hunger >= 100:
+            return f"{organism.name} hunger reaches 100. {organism.name} is dead."

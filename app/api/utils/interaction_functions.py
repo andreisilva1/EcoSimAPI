@@ -40,11 +40,8 @@ def reproduce(organisms: List[Organism]):
 
 
 # PREDATORS
-def hunt_prey(attacker: Organism, organisms: List[Organism]):
+def hunt_prey(attacker: Organism, deffender: Organism):
     results = []
-    deffender = random.choice(organisms)
-    while deffender == attacker:
-        deffender = random.choice(organisms)
     is_night = attacker.activity_cycle
     reattack = True
     while deffender.health > 0 or reattack:
@@ -75,6 +72,16 @@ def hunt_prey(attacker: Organism, organisms: List[Organism]):
             }
         )
         reattack = random.random() > DEFFENDER_DEFEND_CHANCE
+    if deffender.health <= 0:
+        HUNGER_TO_RECOVER = random.randint(10, 30)
+        HEALTH_TO_RECOVER = random.randint(5, 25)
+        attacker.hunger += HUNGER_TO_RECOVER
+        attacker.health += HEALTH_TO_RECOVER
+        results.append(
+            {
+                f"{attacker.name} kills {deffender.name} and recovers {HUNGER_TO_RECOVER} hunger and {HEALTH_TO_RECOVER} health!"
+            }
+        )
     return results
 
 
