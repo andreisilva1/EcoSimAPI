@@ -15,7 +15,7 @@ from app.database.enums import (
     SocialBehavior,
     Speed,
 )
-from app.database.models import Organism, Plant, PredationLink
+from app.database.models import Organism, Plant, PollinationLink, PredationLink
 
 
 class OrganismService:
@@ -96,14 +96,16 @@ class OrganismService:
                     )
                     if organism.scalar_one_or_none():
                         preys_orm.append(organism)
-
-        new_organism = Organism(
-            id=uuid4(),
-            pollination_target=await self.get_pollination_targets_and_convert_to_organisms(
+        pollination_target = (
+            await self.get_pollination_targets_and_convert_to_organisms(
                 str(create_organism.pollination_target)
             )
             if create_organism.pollination_target
-            else [],
+            else []
+        )
+        new_organism = Organism(
+            id=uuid4(),
+            pollination_target=pollination_target,
             **create_organism.model_dump(
                 exclude=["prey", "predator", "pollination_target"],
             ),
@@ -118,6 +120,9 @@ class OrganismService:
             else SocialBehavior.pack,
         )
 
+        for target in pollination_target:
+            new_pollination_link = PollinationLink(new_organism.id, target.id)
+            self.session.add(new_pollination_link)
         if predators_orm:
             for predator in predators_orm:
                 new_relation = PredationLink(

@@ -13,7 +13,6 @@ from app.api.schemas.ecosystem import (
     UpdateEcoSystem,
 )
 from app.api.schemas.organism import UpdateEcosystemOrganism
-from app.api.services.organism import OrganismService
 from app.api.utils.interaction_functions import (
     drink_water,
     graze_plants,
@@ -271,7 +270,7 @@ class EcoSystemService:
                         )
                         results.append(graze_plants(pollination_target, organism))
 
-                elif organism.type == OrganismType.herbivore:
+                elif organism.type == OrganismType.omnivore:
                     if action == "find_food":
                         action = random.choice(["hunt_prey", "graze_plants"])
                         match action:
