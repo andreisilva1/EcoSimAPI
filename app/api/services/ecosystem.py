@@ -181,15 +181,15 @@ class EcoSystemService:
             entities_to_add = updated_fields[field].split(",")
 
             for entity in entities_to_add:
-                if field != "pollination_target":
+                if field == "pollination_target":
+                    entities_in_the_ecosystem = await self.extract_plant_by_name(entity)
+                
+                else:
                     entities_in_the_ecosystem = (
                         await self.extract_organisms_from_a_specific_ecosystem_by_name(
                             ecosystem_id, entity
                         )
                     )
-                # else:
-                #     entity_in_database = await self.extract_plant_by_name(entity)
-
                 if entities_in_the_ecosystem:
                     list_entities = getattr(organism, field)
                     for entity_in_the_ecosystem in entities_in_the_ecosystem:
