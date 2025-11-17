@@ -152,69 +152,37 @@ async def test_remove_organism_from_a_ecosystem(
 
     new_ecosystem = await client.post("/ecosystem/create", json=ecosystem_payload)
     new_ecosystem_id = new_ecosystem.json()["ecosystem_created"]["id"]
-    organisms = [
-        {
-            "payload": {
-                "name": "Meerkat",
-                "weight": 0.7,
-                "size": 0.5,
-                "age": 2,
-                "max_age": 14,
-                "reproduction_age": 2,
-                "fertility_rate": 3,
-                "water_consumption": 0.1,
-                "food_consumption": 0.2,
-                "territory_size": 1.0,
-            },
-            "params": {
-                "type": "omnivore",
-                "diet_type": "omnivore",
-                "activity_cycle": "diurnal",
-                "speed": "fast",
-                "social_behavior": "herd",
-            },
+    organism = {
+        "payload": {
+            "name": "Meerkat",
+            "weight": 0.7,
+            "size": 0.5,
+            "age": 2,
+            "max_age": 14,
+            "reproduction_age": 2,
+            "fertility_rate": 3,
+            "water_consumption": 0.1,
+            "food_consumption": 0.2,
+            "territory_size": 1.0,
         },
-        {
-            "payload": {
-                "name": "Caracal",
-                "weight": 15,
-                "size": 1.1,
-                "age": 4,
-                "max_age": 16,
-                "reproduction_age": 3,
-                "fertility_rate": 2,
-                "water_consumption": 0.5,
-                "food_consumption": 3,
-                "territory_size": 5,
-            },
-            "params": {
-                "type": "predator",
-                "diet_type": "carnivore",
-                "activity_cycle": "nocturnal",
-                "speed": "fast",
-                "social_behavior": "solitary",
-            },
+        "params": {
+            "type": "omnivore",
+            "diet_type": "omnivore",
+            "activity_cycle": "diurnal",
+            "speed": "fast",
+            "social_behavior": "herd",
         },
-    ]
+    }
 
-    organisms_name_and_ids = []
-    for organism in organisms:
-        new_organism = await client.post(
-            "/organism/create",
-            json=organism["payload"],
-            params=organism["params"],
-        )
+    new_organism = await client.post(
+        "/organism/create",
+        json=organism["payload"],
+        params=organism["params"],
+    )
 
-        organisms_name_and_ids.append(
-            {
-                "id": new_organism.json()["organism_created"]["id"],
-                "name": new_organism.json()["organism_created"]["name"],
-            }
-        )
-
-        added_to_ecosystem = await client.post(
-            f"/ecosystem/organism/add?organism_name={new_organism.json()['organism_created']['name']}&ecosystem_id={new_ecosystem_id}",
-        )
+    added_to_ecosystem = await client.post(
+        f"/ecosystem/organism/add?organism_name={new_organism.json()['organism_created']['name']}&ecosystem_id={new_ecosystem_id}",
+    )
 
     response_id = await client.delete(
         f"/ecosystem/{new_ecosystem_id}/{added_to_ecosystem.json()['added_to_ecosystem']['id']}/remove"

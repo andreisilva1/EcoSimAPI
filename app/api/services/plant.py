@@ -102,7 +102,7 @@ class PlantService:
             status_code=201,
             content=jsonable_encoder(
                 {
-                    "created_plant": new_plant,
+                    "plant_created": new_plant,
                 }
             ),
         )

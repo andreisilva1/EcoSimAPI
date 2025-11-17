@@ -25,7 +25,7 @@ async def test_create_plant(db_session: AsyncSession, client: AsyncClient):
         params={"type": "tree"},
     )
     assert response.status_code == 201
-    assert UUID(response.json()["created_plant"]["id"])
+    assert UUID(response.json()["plant_created"]["id"])
 
 
 @pytest.mark.asyncio
@@ -69,14 +69,14 @@ async def test_update_plant(db_session: AsyncSession, client: AsyncClient):
 
     update_infos = {"name": "Updated Plant"}
 
-    created_plant = await client.post(
+    plant_created = await client.post(
         "/plant/create",
         json=plant_payload,
         params={"type": "tree"},
     )
 
     response = await client.patch(
-        f"/plant/{created_plant.json()['created_plant']['id']}/update",
+        f"/plant/{plant_created.json()['plant_created']['id']}/update",
         json=update_infos,
     )
 
@@ -98,14 +98,14 @@ async def test_delete_plant(db_session: AsyncSession, client: AsyncClient):
         "water_need": 5,
     }
 
-    created_plant = await client.post(
+    plant_created = await client.post(
         "/plant/create",
         json=plant_payload,
         params={"type": "tree"},
     )
 
     response = await client.delete(
-        f"/plant/{created_plant.json()['created_plant']['id']}/delete"
+        f"/plant/{plant_created.json()['plant_created']['id']}/delete"
     )
 
     assert response.status_code == 204

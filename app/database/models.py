@@ -42,7 +42,6 @@ class Organism(SQLModel, table=True):
     water_consumption: float
     food_consumption: float
     diet_type: DietType  # carnivore, herbivore, omnivore, nectarivore
-    food_sources: Optional[str] = None
 
     # Interactions
     predator: Optional[List["Organism"]] = Relationship(
@@ -63,8 +62,6 @@ class Organism(SQLModel, table=True):
             "foreign_keys": "[PredationLink.predator_id, PredationLink.prey_id]",
         },
     )
-    weaknessMin: Optional[str] = None
-    weaknessMax: Optional[str] = None
     pollination_target: Optional[List["Plant"]] = Relationship(
         back_populates="pollinators",
         link_model=PollinationLink,
@@ -74,7 +71,6 @@ class Organism(SQLModel, table=True):
     # Behavior
     activity_cycle: Optional[ActivityCycle] = None  # day, night...
     speed: Optional[Speed] = Speed.normal
-    territory_size: Optional[float] = None
     social_behavior: Optional[SocialBehavior] = None  # solitary, pack, herd
 
     ecosystem_id: UUID = Field(foreign_key="ecosystem.id", nullable=True)
@@ -101,7 +97,6 @@ class Plant(SQLModel, table=True):
     max_age: Optional[float] = None
     reproduction_age: Optional[float] = None
     fertility_rate: Optional[int] = None  # number of sements by cycle
-    population: int = 1
 
     # Needs
     water_need: Optional[float] = None

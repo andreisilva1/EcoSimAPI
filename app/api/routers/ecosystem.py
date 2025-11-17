@@ -2,6 +2,7 @@ from fastapi import APIRouter
 
 from app.api.dependencies import EcoSystemServiceDep
 from app.api.schemas.organism import UpdateEcosystemOrganism
+from app.api.schemas.plant import UpdateEcosystemPlant
 from app.api.utils.utils import verify_uuid
 
 from ..schemas.ecosystem import CreateEcoSystem, UpdateEcoSystem
@@ -54,6 +55,18 @@ async def update_ecosystem_organism(
     )
 
 
+@router.patch("/{plant_name}/update")
+async def update_ecosystem_plant(
+    ecosystem_id: str,
+    updated_plant: UpdateEcosystemPlant,
+    service: EcoSystemServiceDep,
+    plant_name: str,
+):
+    return await service.update_ecosystem_plant(
+        verify_uuid(ecosystem_id), plant_name, updated_plant
+    )
+
+
 @router.patch("/{ecosystem_id}")
 async def update_ecosystem_infos(
     ecosystem_id: str, update_infos: UpdateEcoSystem, service: EcoSystemServiceDep
@@ -72,4 +85,13 @@ async def remove_organism_from_a_ecosystem(
 ):
     return await service.remove_organism_from_a_ecosystem(
         verify_uuid(ecosystem_id), organism_name_or_id
+    )
+
+
+@router.delete("/{ecosystem_id}/{plant_name_or_id}/remove")
+async def remove_plant_from_a_ecosystem(
+    ecosystem_id: str, plant_name_or_id: str, service: EcoSystemServiceDep
+):
+    return await service.remove_plant_from_a_ecosystem(
+        verify_uuid(ecosystem_id), plant_name_or_id
     )

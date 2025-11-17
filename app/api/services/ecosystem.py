@@ -13,6 +13,7 @@ from app.api.schemas.ecosystem import (
     UpdateEcoSystem,
 )
 from app.api.schemas.organism import UpdateEcosystemOrganism
+from app.api.schemas.plant import UpdateEcosystemPlant
 from app.api.services.organism import OrganismService
 from app.api.utils.interaction_functions import (
     collect_and_transport_nectar,
@@ -229,6 +230,52 @@ class EcoSystemService:
             status_code=200, content={"message": f"Organism {organism_name} updated."}
         )
 
+    async def update_ecosystem_plant(
+        self, ecosystem_id, plant_name, updated_plant: UpdateEcosystemPlant
+    ):
+        ecosystem = await self.get(ecosystem_id)
+        plant = await self.extract_plant_by_name(plant_name)
+        if not ecosystem:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="The provided ecosystem doesn't exist.",
+            )
+
+        if not plant:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="The provided plant doesn't exist in the ecosystem.",
+            )
+
+        updated_fields = {}
+        for key, value in updated_plant.model_dump().items():
+            if value:
+                updated_fields[key] = value
+
+        for field in updated_fields:
+            entities_to_add = updated_fields[field].split(",")
+
+            for entity in entities_to_add:
+                if field == "pollinators":
+                    entities_in_the_ecosystem = await self.extract_organism_by_name(
+                        entity
+                    )
+
+                else:
+                    entities_in_the_ecosystem = (
+                        await self.extract_plants_from_a_specific_ecosystem_by_name(
+                            ecosystem_id, entity
+                        )
+                    )
+                if entities_in_the_ecosystem:
+                    list_entities = getattr(plant, field)
+                    for entity_in_the_ecosystem in entities_in_the_ecosystem:
+                        list_entities.append(entity_in_the_ecosystem)
+                    await self.session.commit()
+        return JSONResponse(
+            status_code=200, content={"message": f"Plant {plant_name} updated."}
+        )
+
     async def simulate(self, ecosystem_id: UUID):
         ecosystem = await self.get(ecosystem_id)
 
@@ -386,30 +433,60 @@ class EcoSystemService:
         # Will return the % of the attacker hits the deffender
 
     async def remove_organism_from_a_ecosystem(
-        self, ecosystem_id: UUID, organism_name_or_id: str
+        self, ecosystem_id: UUID, organism_name_or_id: UUID | str
     ):
         ecosystem = await self.get(ecosystem_id)
+        organisms_to_delete = []
         try:
-            organism_uuid = UUID(organism_name_or_id)
+            organism_uuid = UUID(str(organism_name_or_id))
         except (ValueError, TypeError):
             organism_uuid = None
 
-        organisms = [
+        organisms_to_delete = [
             organism
             for organism in ecosystem.organisms
-            if (
-                (organism.name == organism_name_or_id or organism.id == organism_uuid)
-                if organism_uuid
-                else organism.name == organism_name_or_id
-            )
+            if (organism_uuid is not None and organism.id == organism_uuid)
+            or (organism.name == organism_name_or_id)
         ]
-        if not organisms:
+
+        if not organisms_to_delete:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="No organism found in that ecosystem with the ID or name provided.",
             )
-        for organism in organisms:
+
+        for organism in organisms_to_delete:
             ecosystem.organisms.remove(organism)
+            await self.session.delete(organism)
+        await self.session.commit()
+        await self.session.refresh(ecosystem)
+        return Response(status_code=204)
+
+    async def remove_plant_from_a_ecosystem(
+        self, ecosystem_id: UUID, plant_name_or_id: str
+    ):
+        ecosystem = await self.get(ecosystem_id)
+        try:
+            plant_uuid = UUID(plant_name_or_id)
+        except (ValueError, TypeError):
+            plant_uuid = None
+
+        plants = [
+            plant
+            for plant in ecosystem.plants
+            if (
+                (plant.name == plant_name_or_id or plant.id == plant_uuid)
+                if plant_uuid
+                else plant.name == plant_name_or_id
+            )
+        ]
+        if not plants:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="No plant found in that ecosystem with the ID or name provided.",
+            )
+        for plant in plants:
+            ecosystem.plants.remove(plant)
             await OrganismService(self.session).delete()
         await self.session.commit()
         await self.session.refresh(ecosystem)

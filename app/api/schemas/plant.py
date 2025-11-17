@@ -11,7 +11,6 @@ class BasePlant(BaseModel):
     max_age: Optional[int] = None
     reproduction_age: Optional[int] = None
     fertility_rate: Optional[int] = None
-    population: int = 1
     water_need: Optional[float] = None
     pollinators: Optional[str] = None
 
@@ -22,3 +21,7 @@ class CreatePlant(BasePlant):
 
 class UpdatePlant(BasePlant):
     pass
+
+
+class UpdateEcosystemPlant(BaseModel):
+    pollinators: Optional[str] = None
