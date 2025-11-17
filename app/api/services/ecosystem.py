@@ -54,7 +54,10 @@ class EcoSystemService:
             )
         )
         ecosystem = ecosystem.scalar_one_or_none()
-        return ecosystem.organisms
+        return JSONResponse(
+            status_code=200,
+            content=jsonable_encoder({"all_organisms": ecosystem.organisms}),
+        )
 
     async def get_pollination_targets_in_the_ecosystem(
         self, organism: Organism, ecosystem: Ecosystem
@@ -209,7 +212,11 @@ class EcoSystemService:
                 updated_fields[key] = value
 
         for field in updated_fields:
-            entities_to_add = updated_fields[field].split(",")
+            entities_to_add = (
+                updated_fields[field].split(",")
+                if "," in updated_fields[field]
+                else updated_fields[field]
+            )
 
             for entity in entities_to_add:
                 if field == "pollination_target":
