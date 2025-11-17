@@ -13,7 +13,9 @@ from app.api.schemas.ecosystem import (
     UpdateEcoSystem,
 )
 from app.api.schemas.organism import UpdateEcosystemOrganism
+from app.api.services.organism import OrganismService
 from app.api.utils.interaction_functions import (
+    collect_and_transport_nectar,
     drink_water,
     graze_plants,
     hunt_prey,
@@ -21,7 +23,7 @@ from app.api.utils.interaction_functions import (
     rest,
 )
 from app.database.enums import ActivityCycle, OrganismType
-from app.database.interactions_list import ACTIONS_BY_TYPE
+from app.database.interactions_list import ACTIONS_BY_ORGANISM_TYPE
 from app.database.models import Ecosystem, Organism, Plant
 
 
@@ -58,8 +60,9 @@ class EcoSystemService:
     ):
         pollination_targets_in_the_ecosystem = []
         for target in organism.pollination_target:
-            if target in ecosystem.plants:
-                pollination_targets_in_the_ecosystem.append(target)
+            for plant in ecosystem.plants:
+                if plant.name == target.name:
+                    pollination_targets_in_the_ecosystem.append(plant)
         return pollination_targets_in_the_ecosystem
 
     async def add(self, ecosystem: CreateEcoSystem):
@@ -112,15 +115,14 @@ class EcoSystemService:
         return organisms
 
     async def extract_plant_by_name(self, name: str):
-        plant = await self.session.execute(select(Plant).where(Plant.name == name))
-        return plant.scalar_one_or_none()
+        plant = await self.session.scalars(select(Plant).where(Plant.name == name))
+        return plant.first()
 
     async def convert_pollination_target_to_plant(
-        self, pollination_target: str
+        self, pollination_target
     ) -> List[Plant]:
-        pollination_target_splitted = pollination_target.split(",")
         targets = []
-        for target in pollination_target_splitted:
+        for target in pollination_target:
             plant = await self.session.execute(
                 select(Plant).where(Plant.name == target)
             )
@@ -128,6 +130,32 @@ class EcoSystemService:
             if plant:
                 targets.append(plant)
         return targets
+
+    async def add_plant_to_a_ecosystem(
+        self, ecosystem_id: UUID, plant_name: str, return_json: bool = True
+    ):
+        ecosystem = await self.get(ecosystem_id)
+
+        plant = await self.extract_plant_by_name(plant_name)
+
+        if not plant:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="No plant found with the provided name.",
+            )
+
+        new_plant_to_this_ecosystem = Plant(
+            **plant.model_dump(exclude=["id", "health", "age"]), id=uuid4()
+        )
+        ecosystem.plants.append(new_plant_to_this_ecosystem)
+        await self.session.commit()
+        if return_json:
+            return JSONResponse(
+                status_code=201,
+                content=jsonable_encoder(
+                    {"added_to_ecosystem": new_plant_to_this_ecosystem}
+                ),
+            )
 
     async def add_organism_to_a_eco_system(
         self, ecosystem_id: UUID, organism_name: str, return_json: bool = True
@@ -143,7 +171,9 @@ class EcoSystemService:
             )
 
         new_organism_to_this_ecosystem = Organism(
-            **organism.model_dump(exclude=["id"]), id=uuid4()
+            **organism.model_dump(exclude=["id"]),
+            id=uuid4(),
+            pollination_target=organism.pollination_target,
         )
         ecosystem.organisms.append(new_organism_to_this_ecosystem)
         await self.session.commit()
@@ -183,7 +213,7 @@ class EcoSystemService:
             for entity in entities_to_add:
                 if field == "pollination_target":
                     entities_in_the_ecosystem = await self.extract_plant_by_name(entity)
-                
+
                 else:
                     entities_in_the_ecosystem = (
                         await self.extract_organisms_from_a_specific_ecosystem_by_name(
@@ -204,9 +234,10 @@ class EcoSystemService:
 
         results = []
         organisms: List[Organism] = ecosystem.organisms
+        plants: List[Plant] = ecosystem.plants
         for organism in organisms:
             food_consumed = 0
-            possible_interactions = ACTIONS_BY_TYPE[organism.type]
+            possible_interactions = ACTIONS_BY_ORGANISM_TYPE[organism.type]
             actions = random.sample(possible_interactions, 2)
             for action in actions:
                 if (
@@ -279,7 +310,7 @@ class EcoSystemService:
                             case "graze_plants":
                                 targets = (
                                     await self.convert_pollination_target_to_plant(
-                                        organism.pollinators
+                                        organism.pollination_target
                                     )
                                 )
                                 if not targets:
@@ -288,6 +319,40 @@ class EcoSystemService:
                                     )
                                 else:
                                     results.append(graze_plants(targets, organism))
+                elif organism.type == OrganismType.pollinator:
+                    if action == "collect_nectar":
+                        pollination_targets_in_ecosystem = (
+                            await self.get_pollination_targets_in_the_ecosystem(
+                                organism, ecosystem
+                            )
+                        )
+                        if (
+                            not organism.pollination_target
+                            or not pollination_targets_in_ecosystem
+                        ):
+                            results.append(
+                                {
+                                    f"No {organism.name} pollination targets found in this ecosystem "
+                                }
+                            )
+                        else:
+                            (
+                                results_collect_nectar,
+                                results_transport_nectar,
+                                plant_to_transport_nectar,
+                                plant_to_transport_nectar_population_increment,
+                            ) = collect_and_transport_nectar(
+                                organism, pollination_targets_in_ecosystem
+                            )
+                            for _ in range(
+                                plant_to_transport_nectar_population_increment
+                            ):
+                                await self.add_plant_to_a_ecosystem(
+                                    ecosystem.id, plant_to_transport_nectar.name
+                                )
+                            results.append(
+                                [results_collect_nectar, results_transport_nectar],
+                            )
 
             if food_consumed < organism.food_consumption:
                 HEALTH_LOST = random.randint(5, 15)
@@ -297,6 +362,10 @@ class EcoSystemService:
                         f"{organism.name} don't eat the sufficient for the day and lost {HEALTH_LOST}"
                     }
                 )
+
+        for plant in plants:
+            if plant.weight <= 0:
+                results.append(await self.death_cause_and_delete_organism(plant))
 
         actual_cycle = ecosystem.cycle
         if actual_cycle == ActivityCycle.diurnal:
@@ -341,7 +410,9 @@ class EcoSystemService:
             )
         for organism in organisms:
             ecosystem.organisms.remove(organism)
+            await OrganismService(self.session).delete()
         await self.session.commit()
+        await self.session.refresh(ecosystem)
         return Response(status_code=204)
 
     async def delete(self, ecosystem_id: UUID):
@@ -355,14 +426,17 @@ class EcoSystemService:
             detail="No ecosystem found with the provided ID",
         )
 
-    async def death_cause_and_delete_organism(self, organism: Organism):
+    async def death_cause_and_delete_organism(self, organism: Organism | Plant):
         await self.session.delete(organism)
         await self.session.commit()
         if organism.health <= 0:
             return f"{organism.name} health reaches 0. {organism.name} is dead."
+        if type(organism) is Organism:
+            if organism.thirst >= 100:
+                return f"{organism.name} thirst reaches 100. {organism.name} is dead."
 
-        if organism.thirst >= 100:
-            return f"{organism.name} thirst reaches 100. {organism.name} is dead."
-
-        if organism.hunger >= 100:
-            return f"{organism.name} hunger reaches 100. {organism.name} is dead."
+            if organism.hunger >= 100:
+                return f"{organism.name} hunger reaches 100. {organism.name} is dead."
+        elif type(organism) is Plant:
+            if organism.weight <= 0:
+                return {f"{organism.name} weight reaches 0. {organism.name} is dead."}

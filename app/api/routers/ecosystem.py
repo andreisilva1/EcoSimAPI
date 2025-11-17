@@ -35,13 +35,11 @@ async def add_organism_to_a_eco_system(
     )
 
 
-@router.delete("/{ecosystem_id}/{organism_name_or_id}/remove")
-async def remove_organism_from_a_ecosystem(
-    ecosystem_id: str, organism_name_or_id: str, service: EcoSystemServiceDep
+@router.post("/plant/add")
+async def add_plant_to_a_eco_system(
+    plant_name: str, ecosystem_id: str, service: EcoSystemServiceDep
 ):
-    return await service.remove_organism_from_a_ecosystem(
-        verify_uuid(ecosystem_id), organism_name_or_id
-    )
+    return await service.add_plant_to_a_ecosystem(verify_uuid(ecosystem_id), plant_name)
 
 
 @router.patch("/{organism_name}/update")
@@ -66,3 +64,12 @@ async def update_ecosystem_infos(
 @router.delete("/{ecosystem_id}")
 async def delete_ecosystem(ecosystem_id: str, service: EcoSystemServiceDep):
     return await service.delete(verify_uuid(ecosystem_id))
+
+
+@router.delete("/{ecosystem_id}/{organism_name_or_id}/remove")
+async def remove_organism_from_a_ecosystem(
+    ecosystem_id: str, organism_name_or_id: str, service: EcoSystemServiceDep
+):
+    return await service.remove_organism_from_a_ecosystem(
+        verify_uuid(ecosystem_id), organism_name_or_id
+    )

@@ -133,10 +133,10 @@ class Ecosystem(SQLModel, table=True):
     days: int = Field(default=0)
     organisms: List[Organism] = Relationship(
         back_populates="ecosystem",
-        sa_relationship_kwargs={"lazy": "selectin", "cascade": "save-update, merge"},
+        sa_relationship_kwargs={"lazy": "selectin", "cascade": "all, delete-orphan"},
     )
 
     plants: List[Plant] = Relationship(
         back_populates="ecosystem",
-        sa_relationship_kwargs={"lazy": "selectin", "cascade": "save-update, merge"},
+        sa_relationship_kwargs={"lazy": "selectin", "cascade": "all, delete-orphan"},
     )
