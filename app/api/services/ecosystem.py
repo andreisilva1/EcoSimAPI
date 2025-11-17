@@ -59,6 +59,24 @@ class EcoSystemService:
             content=jsonable_encoder({"all_organisms": ecosystem.organisms}),
         )
 
+    async def get_all_ecosystem_plants(self, ecosystem_name_or_id: str):
+        try:
+            valid_uuid = UUID(ecosystem_name_or_id)
+        except (ValueError, TypeError):
+            valid_uuid = None
+        ecosystem = await self.session.execute(
+            select(Ecosystem).where(
+                (Ecosystem.name == ecosystem_name_or_id or Ecosystem.id == valid_uuid)
+                if valid_uuid
+                else Ecosystem.name == ecosystem_name_or_id
+            )
+        )
+        ecosystem = ecosystem.scalar_one_or_none()
+        return JSONResponse(
+            status_code=200,
+            content=jsonable_encoder({"all_plants": ecosystem.plants}),
+        )
+
     async def get_pollination_targets_in_the_ecosystem(
         self, organism: Organism, ecosystem: Ecosystem
     ):
@@ -117,6 +135,19 @@ class EcoSystemService:
                 organism for organism in ecosystem.organisms if organism.name == name
             ]
         return organisms
+
+    async def extract_plants_from_a_specific_ecosystem_by_name(
+        self, ecosystem_id: UUID, name: str
+    ):
+        ecosystem = await self.session.execute(
+            select(Ecosystem).where(Ecosystem.id == ecosystem_id)
+        )
+        ecosystem = ecosystem.scalar_one_or_none()
+        if ecosystem:
+            plants = [
+                organism for organism in ecosystem.plants if organism.name == name
+            ]
+        return plants
 
     async def extract_plant_by_name(self, name: str):
         plant = await self.session.scalars(select(Plant).where(Plant.name == name))
@@ -193,14 +224,16 @@ class EcoSystemService:
         self, ecosystem_id, organism_name, updated_organism: UpdateEcosystemOrganism
     ):
         ecosystem = await self.get(ecosystem_id)
-        organism = await self.extract_organism_by_name(organism_name)
+        organisms = await self.extract_organisms_from_a_specific_ecosystem_by_name(
+            ecosystem.id, organism_name
+        )
         if not ecosystem:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="The provided ecosystem doesn't exist.",
             )
 
-        if not organism:
+        if not organisms:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="The provided organism doesn't exist in the ecosystem.",
@@ -229,9 +262,10 @@ class EcoSystemService:
                         )
                     )
                 if entities_in_the_ecosystem:
-                    list_entities = getattr(organism, field)
-                    for entity_in_the_ecosystem in entities_in_the_ecosystem:
-                        list_entities.append(entity_in_the_ecosystem)
+                    for organism in organisms:
+                        list_entities = getattr(organism, field)
+                        for entity_in_the_ecosystem in entities_in_the_ecosystem:
+                            list_entities.append(entity_in_the_ecosystem)
                     await self.session.commit()
         return JSONResponse(
             status_code=200, content={"message": f"Organism {organism_name} updated."}
@@ -241,14 +275,16 @@ class EcoSystemService:
         self, ecosystem_id, plant_name, updated_plant: UpdateEcosystemPlant
     ):
         ecosystem = await self.get(ecosystem_id)
-        plant = await self.extract_plant_by_name(plant_name)
+        plants = await self.extract_plants_from_a_specific_ecosystem_by_name(
+            ecosystem.id, plant_name
+        )
         if not ecosystem:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="The provided ecosystem doesn't exist.",
             )
 
-        if not plant:
+        if not plants:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="The provided plant doesn't exist in the ecosystem.",
@@ -260,7 +296,11 @@ class EcoSystemService:
                 updated_fields[key] = value
 
         for field in updated_fields:
-            entities_to_add = updated_fields[field].split(",")
+            entities_to_add = (
+                updated_fields[field].split(",")
+                if "," in updated_fields[field]
+                else updated_fields[field]
+            )
 
             for entity in entities_to_add:
                 if field == "pollinators":
@@ -275,9 +315,10 @@ class EcoSystemService:
                         )
                     )
                 if entities_in_the_ecosystem:
-                    list_entities = getattr(plant, field)
-                    for entity_in_the_ecosystem in entities_in_the_ecosystem:
-                        list_entities.append(entity_in_the_ecosystem)
+                    for plant in plants:
+                        list_entities = getattr(plant, field)
+                        for entity_in_the_ecosystem in entities_in_the_ecosystem:
+                            list_entities.append(entity_in_the_ecosystem)
                     await self.session.commit()
         return JSONResponse(
             status_code=200, content={"message": f"Plant {plant_name} updated."}
@@ -473,28 +514,27 @@ class EcoSystemService:
         self, ecosystem_id: UUID, plant_name_or_id: str
     ):
         ecosystem = await self.get(ecosystem_id)
+        plants_to_delete = []
         try:
-            plant_uuid = UUID(plant_name_or_id)
+            plant_uuid = UUID(str(plant_name_or_id))
         except (ValueError, TypeError):
             plant_uuid = None
 
-        plants = [
+        plants_to_delete = [
             plant
             for plant in ecosystem.plants
-            if (
-                (plant.name == plant_name_or_id or plant.id == plant_uuid)
-                if plant_uuid
-                else plant.name == plant_name_or_id
-            )
+            if (plant_uuid is not None and plant.id == plant_uuid)
+            or (plant.name == plant_name_or_id)
         ]
-        if not plants:
+
+        if not plants_to_delete:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail="No plant found in that ecosystem with the ID or name provided.",
+                detail="No organism found in that ecosystem with the ID or name provided.",
             )
-        for plant in plants:
+        for plant in plants_to_delete:
             ecosystem.plants.remove(plant)
-            await OrganismService(self.session).delete()
+            await self.session.delete(plant)
         await self.session.commit()
         await self.session.refresh(ecosystem)
         return Response(status_code=204)

@@ -14,12 +14,9 @@ async def lifespan_handler(app: FastAPI):
     yield
 
 
-app = FastAPI(lifespan=lifespan_handler)
+app = FastAPI(
+    lifespan=lifespan_handler, docs_url="/", redoc_url=None, title="EcoSimAPI"
+)
 app.include_router(ecosystem.router)
 app.include_router(organism.router)
 app.include_router(plant.router)
-
-
-@app.get("/")
-async def read_root():
-    return {"message": "Hello, World!"}

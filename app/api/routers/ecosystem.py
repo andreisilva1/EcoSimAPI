@@ -7,14 +7,21 @@ from app.api.utils.utils import verify_uuid
 
 from ..schemas.ecosystem import CreateEcoSystem, UpdateEcoSystem
 
-router = APIRouter(prefix="/ecosystem", tags=["ecosystem"])
+router = APIRouter(prefix="/ecosystem", tags=["Ecosystem"])
 
 
-@router.get("/{ecosystem_name_or_id}")
+@router.get("/{ecosystem_name_or_id}/organisms")
 async def get_all_ecosystem_organisms(
     ecosystem_name_or_id: str, service: EcoSystemServiceDep
 ):
     return await service.get_all_ecosystem_organisms(ecosystem_name_or_id)
+
+
+@router.get("/{ecosystem_name_or_id}/plants")
+async def get_all_ecosystem_plants(
+    ecosystem_name_or_id: str, service: EcoSystemServiceDep
+):
+    return await service.get_all_ecosystem_plants(ecosystem_name_or_id)
 
 
 @router.get("/{ecosystem_id}/simulate")
@@ -43,7 +50,7 @@ async def add_plant_to_a_eco_system(
     return await service.add_plant_to_a_ecosystem(verify_uuid(ecosystem_id), plant_name)
 
 
-@router.patch("/{organism_name}/update")
+@router.patch("/organisms/{organism_name}/update")
 async def update_ecosystem_organism(
     ecosystem_id: str,
     updated_organism: UpdateEcosystemOrganism,
@@ -55,7 +62,7 @@ async def update_ecosystem_organism(
     )
 
 
-@router.patch("/{plant_name}/update")
+@router.patch("/plants/{plant_name}/update")
 async def update_ecosystem_plant(
     ecosystem_id: str,
     updated_plant: UpdateEcosystemPlant,
@@ -79,7 +86,7 @@ async def delete_ecosystem(ecosystem_id: str, service: EcoSystemServiceDep):
     return await service.delete(verify_uuid(ecosystem_id))
 
 
-@router.delete("/{ecosystem_id}/{organism_name_or_id}/remove")
+@router.delete("/{ecosystem_id}/organism/{organism_name_or_id}/remove")
 async def remove_organism_from_a_ecosystem(
     ecosystem_id: str, organism_name_or_id: str, service: EcoSystemServiceDep
 ):
@@ -88,7 +95,7 @@ async def remove_organism_from_a_ecosystem(
     )
 
 
-@router.delete("/{ecosystem_id}/{plant_name_or_id}/remove")
+@router.delete("/{ecosystem_id}/plant/{plant_name_or_id}/remove")
 async def remove_plant_from_a_ecosystem(
     ecosystem_id: str, plant_name_or_id: str, service: EcoSystemServiceDep
 ):
