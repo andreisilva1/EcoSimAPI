@@ -5,26 +5,41 @@ from app.api.utils.attack_interactions import hit_chance
 from app.database.enums import ActivityCycle
 from app.database.models import Ecosystem, Organism, Plant
 
-THIRST_REMOVED_BY_DRINK_WATER = 3
-
 
 # GLOBAL
-def drink_water(ecosystem: Ecosystem, organism: Organism):
+def drink_water(ecosystem: Ecosystem, organism_or_plant: Organism | Plant):
     HEALTH = random.randint(5, 20)
     THIRST = random.randint(5, 20)
-    if ecosystem.water_available >= organism.water_consumption:
-        ecosystem.water_available -= organism.water_consumption
-        organism.thirst -= THIRST
-        organism.health += HEALTH
-        return {
-            f"{organism.name} drinks {organism.water_consumption}, recovering {HEALTH} health and reducing his thirst by {THIRST}."
-        }
-    else:
-        organism.thirst += THIRST
-        organism.health -= HEALTH
-        return {
-            f"No sufficient water for {organism.name}. His health has reduced by {HEALTH} and his thirst increased by {THIRST}."
-        }
+    if type(organism_or_plant) is Organism:
+        if ecosystem.water_available >= organism_or_plant.water_consumption:
+            ecosystem.water_available -= organism_or_plant.water_consumption
+            organism_or_plant.thirst -= THIRST
+            organism_or_plant.health += HEALTH
+            return {
+                f"{organism_or_plant.name} drinks {organism_or_plant.water_consumption}, recovering {HEALTH} health and reducing his thirst by {THIRST}."
+            }
+        else:
+            organism_or_plant.thirst += THIRST
+            organism_or_plant.health -= HEALTH
+            return {
+                f"No sufficient water for {organism_or_plant.name}. His health has reduced by {HEALTH} and his thirst increased by {THIRST}."
+            }
+    if type(organism_or_plant) is Plant:
+        BIOMASS = random.randint(0, 100)
+
+        if ecosystem.water_available >= organism_or_plant.water_need:
+            ecosystem.water_available -= organism_or_plant.water_need
+            organism_or_plant.weight *= 1 + (BIOMASS / 100)
+            organism_or_plant.health += HEALTH
+            return {
+                f"{organism_or_plant.name} drinks {organism_or_plant.water_need}, recovering {HEALTH} health and incresing it's biomass by {BIOMASS}%."
+            }
+        else:
+            organism_or_plant.weight *= 1 - BIOMASS
+            organism_or_plant.health -= HEALTH
+            return {
+                f"No sufficient water for {organism_or_plant.name}. His health has reduced by {HEALTH} and his biomass reduced by {BIOMASS}%."
+            }
 
 
 def rest(organism: Organism):
@@ -91,10 +106,10 @@ def graze_plants(target: Plant, organism: Organism):
         return {f"No {target} has been found to in this ecosystem to {organism.name}."}
 
     biomass_lost, hunger = (
-        round(random.random(), 2),
+        round(0, target.weight),
         random.randint(5, 20),
     )
-    target.weight = biomass_lost * target.weight
+    target.weight -= biomass_lost
     organism.hunger += hunger
     if target.weight <= 0:
         return {

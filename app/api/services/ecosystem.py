@@ -14,7 +14,6 @@ from app.api.schemas.ecosystem import (
 )
 from app.api.schemas.organism import UpdateEcosystemOrganism
 from app.api.schemas.plant import UpdateEcosystemPlant
-from app.api.services.organism import OrganismService
 from app.api.utils.interaction_functions import (
     collect_and_transport_nectar,
     drink_water,
@@ -248,12 +247,15 @@ class EcoSystemService:
             entities_to_add = (
                 updated_fields[field].split(",")
                 if "," in updated_fields[field]
-                else updated_fields[field]
+                else [updated_fields[field]]
             )
-
             for entity in entities_to_add:
                 if field == "pollination_target":
-                    entities_in_the_ecosystem = await self.extract_plant_by_name(entity)
+                    entities_in_the_ecosystem = (
+                        await self.extract_plants_from_a_specific_ecosystem_by_name(
+                            ecosystem_id, entity
+                        )
+                    )
 
                 else:
                     entities_in_the_ecosystem = (
@@ -461,6 +463,8 @@ class EcoSystemService:
         for plant in plants:
             if plant.weight <= 0:
                 results.append(await self.death_cause_and_delete_organism(plant))
+            else:
+                results.append(drink_water(ecosystem, plant))
 
         actual_cycle = ecosystem.cycle
         if actual_cycle == ActivityCycle.diurnal:
@@ -478,7 +482,6 @@ class EcoSystemService:
             status_code=200,
             content=jsonable_encoder({"interaction": results}),
         )
-        # Will return the % of the attacker hits the deffender
 
     async def remove_organism_from_a_ecosystem(
         self, ecosystem_id: UUID, organism_name_or_id: UUID | str

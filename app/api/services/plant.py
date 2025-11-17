@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.schemas.plant import CreatePlant, UpdatePlant
 from app.database.enums import PlantType
-from app.database.models import Organism, Plant
+from app.database.models import Organism, Plant, PollinationLink
 
 
 class PlantService:
@@ -52,23 +52,27 @@ class PlantService:
         return plant
 
     async def verify_if_pollinator_exists(self, pollinator_name: str):
-        pollinator = await self.session.execute(
+        result = await self.session.execute(
             select(Organism).where(Organism.name == pollinator_name)
         )
-        pollinator = pollinator.scalar_one_or_none()
-        if not pollinator:
+
+        pollinators = result.scalars().all()
+        if not pollinators:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=f"No organism with that name was found: ({pollinator_name}). You can delete it from the pollinators field or correct its name.",
             )
-        return pollinator
+        return pollinators
 
     async def get_pollinators_and_convert_to_organisms(self, pollinators: str):
-        pollinators_splitted = pollinators.split(",")
+        pollinators_splitted = (
+            pollinators.split(",") if "," in pollinators else [pollinators]
+        )
         pollinators_converted = []
         for pollinator in pollinators_splitted:
-            organism = await self.verify_if_pollinator_exists(pollinator)
-            pollinators_converted.append(organism)
+            organisms = await self.verify_if_pollinator_exists(pollinator)
+            for organism in organisms:
+                pollinators_converted.append(organism)
         return pollinators_converted
 
     async def verify_if_plant_exists(self, plant_name: str):
@@ -90,12 +94,20 @@ class PlantService:
             pollinators_converted = await self.get_pollinators_and_convert_to_organisms(
                 plant.pollinators
             )
+
         new_plant = Plant(
             id=uuid4(),
             **plant.model_dump(exclude=["pollinators"]),
             type=type,
-            pollinators=pollinators_converted if pollinators_converted else [],
         )
+        new_plant.pollinators.extend(
+            [
+                pol
+                for pol in pollinators_converted
+                if pol.id not in {p.id for p in new_plant.pollinators}
+            ]
+        )
+
         self.session.add(new_plant)
         await self.session.commit()
         return JSONResponse(
