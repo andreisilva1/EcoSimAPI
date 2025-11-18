@@ -1,9 +1,10 @@
 import random
 from typing import List
 
-from app.api.utils.attack_interactions import hit_chance
 from app.database.enums import ActivityCycle
 from app.database.models import Ecosystem, Organism, Plant
+
+from .attack_interactions import hit_chance
 
 
 # GLOBAL
@@ -60,7 +61,7 @@ def hunt_prey(attacker: Organism, deffender: Organism):
     is_night = attacker.activity_cycle
     reattack = True
     while deffender.health > 0 or reattack:
-        attack_chance = hit_chance(
+        attack_chance, relationship_message = hit_chance(
             attacker,
             deffender,
             True if is_night == ActivityCycle.nocturnal else False,
@@ -75,15 +76,13 @@ def hunt_prey(attacker: Organism, deffender: Organism):
             else "Misses and cause 0 damage to"
         )
 
-        ATTACKER_HIT_CHANCE = round(attack_chance * 100, 2)
         DEFFENDER_DEFEND_CHANCE = round((1 - attack_chance) * 100, 2)
         results.append(
             {
                 "attacker": attacker.name,
                 "deffender": deffender.name,
-                "attacker_hit_chance": ATTACKER_HIT_CHANCE,
-                "deffender_defend_chance": DEFFENDER_DEFEND_CHANCE,
                 "result": f"{attacker.name}: {attack_message} {deffender.name}",
+                "relationship_message": relationship_message,
             }
         )
         reattack = random.random() > DEFFENDER_DEFEND_CHANCE

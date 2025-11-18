@@ -17,6 +17,8 @@ class BaseOrganism(BaseModel):
     prey: Optional[str] = None
     pollination_target: Optional[str] = None
 
+
+class CreateOrganism(BaseOrganism):
     @model_validator(mode="after")
     def validate_ages(self):
         if self.max_age < self.age:
@@ -25,10 +27,6 @@ class BaseOrganism(BaseModel):
             raise ValueError("Max age needs to be higher than the reproduction age.")
 
         return self
-
-
-class CreateOrganism(BaseOrganism):
-    pass
 
 
 class UpdateOrganism(BaseOrganism):
@@ -44,6 +42,18 @@ class UpdateOrganism(BaseOrganism):
     predator: str | None = None
     prey: str | None = None
     pollination_target: str | None = None
+
+    @model_validator(mode="after")
+    def validate_ages(self):
+        if self.max_age and self.age:
+            if self.max_age < self.age:
+                raise ValueError("Max age needs to be higher than the actual age.")
+            if self.reproduction_age > self.max_age:
+                raise ValueError(
+                    "Max age needs to be higher than the reproduction age."
+                )
+
+        return self
 
 
 class ReadOrganism(BaseOrganism):

@@ -6,11 +6,24 @@ def hit_chance(attacker: Organism, defender: Organism, is_night: bool) -> float:
     atk = combat_power(attacker, defender, is_night)
     dfd = combat_power(defender, attacker, is_night)
 
+    relationship_message = None
+    if defender.name in [prey.name for prey in attacker.prey]:
+        atk *= 1.15
+        relationship_message = (
+            f"{attacker.name} has a natural advantage over {defender.name} (prey)."
+        )
+
+    elif defender.name in [predator.name for predator in attacker.predator]:
+        atk *= 0.85
+        relationship_message = (
+            f"{attacker.name} is naturally afraid of {defender.name} (predator)."
+        )
+
     total = atk + dfd
 
     chance = atk / total
 
-    return max(0.05, min(chance, 0.95))
+    return (max(0.05, min(chance, 0.95)), relationship_message)
 
 
 def combat_power(org: Organism, opponent: Organism, is_night: bool) -> float:

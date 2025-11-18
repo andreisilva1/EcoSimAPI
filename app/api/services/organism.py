@@ -82,8 +82,8 @@ class OrganismService:
                 for predator in predators_string:
                     query = await self.session.execute(
                         select(Organism).where(
-                            func.lower(Organism.name) == predator.lower()
-                            and not Organism.ecosystem_id
+                            (func.lower(Organism.name) == predator.lower())
+                            & (Organism.ecosystem_id.is_(None))
                         )
                     )
                     organism = query.scalar_one_or_none()

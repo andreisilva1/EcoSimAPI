@@ -49,18 +49,18 @@ class Organism(SQLModel, table=True):
         back_populates="prey",
         link_model=PredationLink,
         sa_relationship_kwargs={
-            "primaryjoin": "Organism.id==PredationLink.predator_id",
-            "secondaryjoin": "Organism.id==PredationLink.prey_id",
-            "foreign_keys": "[PredationLink.predator_id, PredationLink.prey_id]",
+            "primaryjoin": lambda: Organism.id == PredationLink.prey_id,
+            "secondaryjoin": lambda: Organism.id == PredationLink.predator_id,
+            "foreign_keys": [PredationLink.prey_id, PredationLink.predator_id],
         },
     )
     prey: Optional[List["Organism"]] = Relationship(
         back_populates="predator",
         link_model=PredationLink,
         sa_relationship_kwargs={
-            "primaryjoin": "Organism.id==PredationLink.prey_id",
-            "secondaryjoin": "Organism.id==PredationLink.predator_id",
-            "foreign_keys": "[PredationLink.predator_id, PredationLink.prey_id]",
+            "primaryjoin": lambda: Organism.id == PredationLink.predator_id,
+            "secondaryjoin": lambda: Organism.id == PredationLink.prey_id,
+            "foreign_keys": [PredationLink.predator_id, PredationLink.prey_id],
         },
     )
     pollination_target: Optional[List["Plant"]] = Relationship(

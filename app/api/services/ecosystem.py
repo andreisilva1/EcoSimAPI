@@ -7,14 +7,9 @@ from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
-from app.api.schemas.ecosystem import (
-    CreateEcoSystem,
-    UpdateEcoSystem,
-)
-from app.api.schemas.organism import UpdateEcosystemOrganism
-from app.api.schemas.plant import UpdateEcosystemPlant
-from app.api.utils.interaction_functions import (
+from app.api.interactions.interaction_functions import (
     collect_and_transport_nectar,
     drink_water,
     graze_plants,
@@ -22,6 +17,12 @@ from app.api.utils.interaction_functions import (
     reproduce,
     rest,
 )
+from app.api.schemas.ecosystem import (
+    CreateEcoSystem,
+    UpdateEcoSystem,
+)
+from app.api.schemas.organism import UpdateEcosystemOrganism
+from app.api.schemas.plant import UpdateEcosystemPlant
 from app.database.enums import ActivityCycle, OrganismType
 from app.database.interactions_list import ACTIONS_BY_ORGANISM_TYPE
 from app.database.models import Ecosystem, Organism, Plant
@@ -32,7 +33,18 @@ class EcoSystemService:
         self.session = session
 
     async def get(self, ecosystem_id: UUID):
-        ecosystem = await self.session.get(Ecosystem, ecosystem_id)
+        ecosystem = await self.session.scalar(
+            select(Ecosystem)
+            .where(Ecosystem.id == ecosystem_id)
+            .options(
+                selectinload(Ecosystem.organisms).selectinload(Organism.prey),
+                selectinload(Ecosystem.organisms).selectinload(Organism.predator),
+                selectinload(Ecosystem.organisms).selectinload(
+                    Organism.pollination_target
+                ),
+                selectinload(Ecosystem.plants).selectinload(Plant.pollinators),
+            )
+        )
         if not ecosystem:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
@@ -117,10 +129,12 @@ class EcoSystemService:
         )
 
     async def extract_organism_by_name(self, name: str):
-        organism = await self.session.scalars(
-            select(Organism).where(Organism.name == name)
+        organism = await self.session.execute(
+            select(Organism)
+            .where((Organism.name == name) & (Organism.ecosystem_id.is_(None)))
+            .options(selectinload(Organism.prey), selectinload(Organism.predator))
         )
-        return organism.first()
+        return organism.scalar_one_or_none()
 
     async def extract_organisms_from_a_specific_ecosystem_by_name(
         self, ecosystem_id: UUID, name: str
@@ -208,6 +222,8 @@ class EcoSystemService:
             **organism.model_dump(exclude=["id"]),
             id=uuid4(),
             pollination_target=organism.pollination_target,
+            prey=organism.prey,
+            predator=organism.predator,
         )
         ecosystem.organisms.append(new_organism_to_this_ecosystem)
         await self.session.commit()
@@ -332,6 +348,7 @@ class EcoSystemService:
         results = []
         organisms: List[Organism] = ecosystem.organisms
         plants: List[Plant] = ecosystem.plants
+
         for organism in organisms:
             food_consumed = 0
             possible_interactions = ACTIONS_BY_ORGANISM_TYPE[organism.type]
