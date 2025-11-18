@@ -354,14 +354,6 @@ class EcoSystemService:
             possible_interactions = ACTIONS_BY_ORGANISM_TYPE[organism.type]
             actions = random.sample(possible_interactions, 2)
             for action in actions:
-                if (
-                    organism.health <= 0
-                    or organism.thirst >= 100
-                    or organism.hunger >= 100
-                ):
-                    results.append(await self.death_cause_and_delete_organism(organism))
-                    break
-
                 if action == "rest":
                     results.append(rest(organism))
 
@@ -468,6 +460,15 @@ class EcoSystemService:
                                 [results_collect_nectar, results_transport_nectar],
                             )
 
+            if (
+                organism.health <= 0
+                or organism.thirst >= 100
+                or organism.hunger >= 100
+                or organism.age > organism.max_age
+            ):
+                results.append(await self.death_cause_and_delete_organism(organism))
+                continue
+
             if food_consumed < organism.food_consumption:
                 HEALTH_LOST = random.randint(5, 15)
                 organism.health -= HEALTH_LOST
@@ -478,7 +479,7 @@ class EcoSystemService:
                 )
 
         for plant in plants:
-            if plant.weight <= 0:
+            if plant.weight <= 0 or plant.age >= plant.max_age:
                 results.append(await self.death_cause_and_delete_organism(plant))
             else:
                 results.append(drink_water(ecosystem, plant))
@@ -493,6 +494,11 @@ class EcoSystemService:
         elif actual_cycle == ActivityCycle.crepuscular:
             ecosystem.cycle = ActivityCycle.diurnal
             ecosystem.days += 1
+            if ecosystem.days % 3 == 0:
+                ecosystem.year += 1
+                for entity in (*ecosystem.organisms, *ecosystem.plants):
+                    entity.age += 1
+
         await self.session.commit()
 
         return JSONResponse(
@@ -574,13 +580,16 @@ class EcoSystemService:
         await self.session.delete(organism)
         await self.session.commit()
         if organism.health <= 0:
-            return f"{organism.name} health reaches 0. {organism.name} is dead."
+            return f"{organism.name}'s health reached 0. {organism.name} is dead."
+        if organism.age > organism.max_age:
+            return f"{organism.name} has reached its max age. {organism.name} is dead."
+
         if type(organism) is Organism:
             if organism.thirst >= 100:
-                return f"{organism.name} thirst reaches 100. {organism.name} is dead."
+                return f"{organism.name}'s thirst reached 100. {organism.name} is dead."
 
             if organism.hunger >= 100:
-                return f"{organism.name} hunger reaches 100. {organism.name} is dead."
+                return f"{organism.name}'s hunger reached 100. {organism.name} is dead."
         elif type(organism) is Plant:
             if organism.weight <= 0:
-                return {f"{organism.name} weight reaches 0. {organism.name} is dead."}
+                return {f"{organism.name}'s weight reached 0. {organism.name} is dead."}
