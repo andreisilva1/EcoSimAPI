@@ -15,7 +15,11 @@ async def lifespan_handler(app: FastAPI):
 
 
 app = FastAPI(
-    lifespan=lifespan_handler, docs_url="/", redoc_url=None, title="EcoSimAPI"
+    lifespan=lifespan_handler,
+    docs_url="/",
+    redoc_url=None,
+    title="EcoSimAPI",
+    version="1.0.0",
 )
 app.include_router(ecosystem.router)
 app.include_router(organism.router)

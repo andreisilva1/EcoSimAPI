@@ -116,13 +116,6 @@ class Plant(SQLModel, table=True):
         back_populates="plants", sa_relationship_kwargs={"lazy": "selectin"}
     )
 
-    @model_validator(mode="after")
-    def validate_ages(self):
-        if self.max_age:
-            if self.max_age < self.age:
-                raise ValueError("Max age needs to be higher than the actual age.")
-            return self
-
 
 class Ecosystem(SQLModel, table=True):
     id: UUID = Field(sa_column=Column(postgresql.UUID, index=True, primary_key=True))
