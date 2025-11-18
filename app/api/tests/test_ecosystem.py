@@ -49,8 +49,6 @@ async def test_simulate_ecosystem(db_session: AsyncSession, client: AsyncClient)
                 "fertility_rate": 3,
                 "water_consumption": 0.1,
                 "food_consumption": 0.2,
-                "food_sources": "insects",
-                "territory_size": 1.0,
             },
             "params": {
                 "type": "omnivore",
@@ -71,8 +69,6 @@ async def test_simulate_ecosystem(db_session: AsyncSession, client: AsyncClient)
                 "fertility_rate": 2,
                 "water_consumption": 0.5,
                 "food_consumption": 3,
-                "food_sources": "rodents, birds",
-                "territory_size": 5,
             },
             "params": {
                 "type": "predator",
@@ -93,8 +89,6 @@ async def test_simulate_ecosystem(db_session: AsyncSession, client: AsyncClient)
                 "fertility_rate": 1,
                 "water_consumption": 5,
                 "food_consumption": 18,
-                "food_sources": "shrubs, leaves",
-                "territory_size": 8,
             },
             "params": {
                 "type": "herbivore",
@@ -204,7 +198,6 @@ async def test_get_all_organisms_from_a_ecosystem(
             "fertility_rate": 3,
             "water_consumption": 0.1,
             "food_consumption": 0.2,
-            "territory_size": 1.0,
         },
         "params": {
             "type": "omnivore",
@@ -256,7 +249,6 @@ async def test_add_organism_from_a_ecosystem(
             "fertility_rate": 3,
             "water_consumption": 0.1,
             "food_consumption": 0.2,
-            "territory_size": 1.0,
         },
         "params": {
             "type": "omnivore",
@@ -302,7 +294,6 @@ async def test_update_organism_ecosystem(db_session: AsyncSession, client: Async
             "fertility_rate": 3,
             "water_consumption": 0.1,
             "food_consumption": 0.2,
-            "territory_size": 1.0,
         },
         "params": {
             "type": "omnivore",
@@ -375,7 +366,6 @@ async def test_remove_organism_from_a_ecosystem(
             "fertility_rate": 3,
             "water_consumption": 0.1,
             "food_consumption": 0.2,
-            "territory_size": 1.0,
         },
         "params": {
             "type": "omnivore",
@@ -510,7 +500,6 @@ async def test_update_plant_ecosystem(db_session: AsyncSession, client: AsyncCli
             "fertility_rate": 3,
             "water_consumption": 0.1,
             "food_consumption": 0.2,
-            "territory_size": 1.0,
         },
         "params": {
             "type": "omnivore",

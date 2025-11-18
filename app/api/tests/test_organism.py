@@ -17,8 +17,6 @@ async def test_create_organism(db_session: AsyncSession, client: AsyncClient):
         "fertility_rate": 50,
         "water_consumption": 0.0001,
         "food_consumption": 0.0002,
-        "food_sources": "plant matter, insects",
-        "territory_size": 0,
     }
 
     response = await client.post(
@@ -48,7 +46,6 @@ async def test_delete_organism(db_session, client: AsyncClient):
         "fertility_rate": 50,
         "water_consumption": 0.0001,
         "food_consumption": 0.0002,
-        "territory_size": 0,
     }
 
     organism_for_id = await client.post(
@@ -82,8 +79,6 @@ async def test_update_organism(db_session: AsyncSession, client: AsyncClient):
         "fertility_rate": 50,
         "water_consumption": 0.0001,
         "food_consumption": 0.0002,
-        "food_sources": "plant matter, insects",
-        "territory_size": 0,
     }
 
     organism_created = await client.post(
@@ -127,8 +122,6 @@ async def test_get_organism_by_name(db_session: AsyncSession, client: AsyncClien
         "fertility_rate": 50,
         "water_consumption": 0.0001,
         "food_consumption": 0.0002,
-        "food_sources": "plant matter, insects",
-        "territory_size": 0,
     }
 
     organism2_payload = {
@@ -141,8 +134,6 @@ async def test_get_organism_by_name(db_session: AsyncSession, client: AsyncClien
         "fertility_rate": 50,
         "water_consumption": 0.0001,
         "food_consumption": 0.0002,
-        "food_sources": "plant matter, insects",
-        "territory_size": 0,
     }
 
     await client.post(
@@ -168,5 +159,5 @@ async def test_get_organism_by_name(db_session: AsyncSession, client: AsyncClien
         },
     )
 
-    response = await client.get("/organism/?organism_name=Ant")
+    response = await client.get("/organism/?search=Ant")
     assert len(response.json()) == 2

@@ -21,8 +21,8 @@ router = APIRouter(prefix="/organism", tags=["Organism"])
 
 
 @router.get("/")
-async def get_organism(organism_name: str, service: OrganismServiceDep):
-    return await service.get_multiple_organisms_by_name(organism_name)
+async def get_organisms_by_name(search: str, service: OrganismServiceDep):
+    return await service.get_multiple_organisms_by_name(search)
 
 
 @router.post("/create")

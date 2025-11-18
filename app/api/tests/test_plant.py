@@ -47,7 +47,7 @@ async def test_search_plant(db_session: AsyncSession, client: AsyncClient):
         params={"type": "tree"},
     )
 
-    response = await client.get(f"/plant/search?plant_name={plant_payload['name']}")
+    response = await client.get(f"/plant/?search={plant_payload['name']}")
     assert response.status_code == 200
     assert len(response.json()["plants"]) == 1
 

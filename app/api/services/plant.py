@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.schemas.plant import CreatePlant, UpdatePlant
 from app.database.enums import PlantType
-from app.database.models import Organism, Plant, PollinationLink
+from app.database.models import Organism, Plant
 
 
 class PlantService:
