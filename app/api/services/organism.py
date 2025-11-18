@@ -101,8 +101,8 @@ class OrganismService:
                 for prey in preys_string:
                     query = await self.session.execute(
                         select(Organism).where(
-                            func.lower(Organism.name) == prey.lower()
-                            and not Organism.ecosystem_id
+                            func.lower(Organism.name) == prey.lower(),
+                            Organism.ecosystem_id.is_(None),
                         )
                     )
 
