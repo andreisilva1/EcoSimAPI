@@ -72,29 +72,42 @@ class OrganismService:
             )
         predators_orm, preys_orm = [], []
         if create_organism.predator:
-            predators_string = create_organism.predator.split(",")
+            predators_string = (
+                create_organism.predator.split(",")
+                if "," in create_organism.predator
+                else [create_organism.predator]
+            )
             predators_orm = []
             if predators_string:
                 for predator in predators_string:
-                    organism = await self.session.execute(
+                    query = await self.session.execute(
                         select(Organism).where(
                             func.lower(Organism.name) == predator.lower()
+                            and not Organism.ecosystem_id
                         )
                     )
-                    if organism.scalar_one_or_none():
+                    organism = query.scalar_one_or_none()
+                    if organism:
                         predators_orm.append(organism)
 
         if create_organism.prey:
-            preys_string = create_organism.prey.split(",")
+            preys_string = (
+                create_organism.prey.split(",")
+                if "," in create_organism.prey
+                else [create_organism.prey]
+            )
             preys_orm = []
             if preys_string:
                 for prey in preys_string:
-                    organism = await self.session.execute(
+                    query = await self.session.execute(
                         select(Organism).where(
                             func.lower(Organism.name) == prey.lower()
+                            and not Organism.ecosystem_id
                         )
                     )
-                    if organism.scalar_one_or_none():
+
+                    organism = query.scalar_one_or_none()
+                    if organism:
                         preys_orm.append(organism)
         pollination_target = (
             await self.get_pollination_targets_and_convert_to_organisms(

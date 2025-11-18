@@ -1,6 +1,7 @@
 from typing import List, Optional
 from uuid import UUID, uuid4
 
+from pydantic import model_validator
 from sqlalchemy import Column
 from sqlalchemy.dialects import postgresql
 from sqlmodel import Field, Relationship, SQLModel
@@ -34,8 +35,8 @@ class Organism(SQLModel, table=True):
     weight: float
     size: float
     age: float = 0
-    max_age: float
-    reproduction_age: float
+    max_age: float = 0
+    reproduction_age: float = Field(ge=0, default=0)
     fertility_rate: int = 1
 
     # Needs
@@ -93,7 +94,7 @@ class Plant(SQLModel, table=True):
     # Physical / Demography
     weight: Optional[float] = None  # biomass
     size: Optional[float] = None
-    age: float = 0
+    age: float = Field(ge=0, default=0)
     max_age: Optional[float] = None
     reproduction_age: Optional[float] = None
     fertility_rate: Optional[int] = None  # number of sements by cycle
@@ -114,6 +115,13 @@ class Plant(SQLModel, table=True):
     ecosystem: "Ecosystem" = Relationship(
         back_populates="plants", sa_relationship_kwargs={"lazy": "selectin"}
     )
+
+    @model_validator(mode="after")
+    def validate_ages(self):
+        if self.max_age:
+            if self.max_age < self.age:
+                raise ValueError("Max age needs to be higher than the actual age.")
+            return self
 
 
 class Ecosystem(SQLModel, table=True):

@@ -1,21 +1,30 @@
 from typing import Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, model_validator
 
 
 class BaseOrganism(BaseModel):
     name: str
     weight: float
     size: float
-    age: float = 0
-    max_age: float
-    reproduction_age: float
+    age: float = Field(ge=0, default=0)
+    max_age: float = Field(ge=0, default=0)
+    reproduction_age: float = Field(ge=0, default=0)
     fertility_rate: int = 1
     water_consumption: float
     food_consumption: float
     predator: Optional[str] = None
     prey: Optional[str] = None
     pollination_target: Optional[str] = None
+
+    @model_validator(mode="after")
+    def validate_ages(self):
+        if self.max_age < self.age:
+            raise ValueError("Max age needs to be higher than the actual age.")
+        if self.reproduction_age > self.max_age:
+            raise ValueError("Max age needs to be higher than the reproduction age.")
+
+        return self
 
 
 class CreateOrganism(BaseOrganism):
@@ -26,9 +35,9 @@ class UpdateOrganism(BaseOrganism):
     name: str | None = None
     weight: float | None = None
     size: float | None = None
-    age: float | None = None
-    max_age: float | None = None
-    reproduction_age: float | None = None
+    age: float | None = Field(ge=0, default=None)
+    max_age: float | None = Field(ge=0, default=None)
+    reproduction_age: float | None = Field(ge=0, default=None)
     fertility_rate: int | None = None
     water_consumption: float | None = None
     food_consumption: float | None = None
