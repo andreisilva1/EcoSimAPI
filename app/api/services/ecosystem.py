@@ -5,7 +5,7 @@ from uuid import UUID, uuid4
 from fastapi import HTTPException, Response, status
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -99,6 +99,15 @@ class EcoSystemService:
         return pollination_targets_in_the_ecosystem
 
     async def add(self, ecosystem: CreateEcoSystem):
+        query = await self.session.execute(
+            select(Ecosystem).where((func.lower(Ecosystem.name) == ecosystem.name))
+        )
+        existent_ecosystem = query.scalar_one_or_none()
+        if existent_ecosystem:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="A ecosystem with this name already exists.",
+            )
         new_eco_system = Ecosystem(id=uuid4(), **ecosystem.model_dump())
         self.session.add(new_eco_system)
         await self.session.commit()

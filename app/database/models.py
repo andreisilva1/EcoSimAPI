@@ -135,4 +135,4 @@ class Ecosystem(SQLModel, table=True):
         back_populates="ecosystem",
         sa_relationship_kwargs={"lazy": "selectin", "cascade": "all, delete-orphan"},
     )
-    year: int = 0
+    year: Optional[int] = 0
