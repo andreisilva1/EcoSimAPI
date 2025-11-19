@@ -27,6 +27,16 @@ class CreatePlant(BasePlant):
 
 
 class UpdatePlant(BasePlant):
+    name: str | None = None
+    weight: Optional[float] | None = None
+    size: Optional[float] | None = None
+    age: float | None = Field(ge=0, default=0)
+    max_age: float | None = Field(ge=0, default=0)
+    reproduction_age: float | None = Field(ge=0, default=0)
+    fertility_rate: Optional[int] | None = None
+    water_need: Optional[float] | None = None
+    pollinators: Optional[str] | None = None
+
     @model_validator(mode="after")
     def validate_ages(self):
         if self.max_age < self.age:
