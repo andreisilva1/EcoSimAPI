@@ -1,7 +1,6 @@
 from typing import List, Optional
 from uuid import UUID, uuid4
 
-from pydantic import model_validator
 from sqlalchemy import Column
 from sqlalchemy.dialects import postgresql
 from sqlmodel import Field, Relationship, SQLModel

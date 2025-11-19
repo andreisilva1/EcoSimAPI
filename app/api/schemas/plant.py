@@ -14,6 +14,8 @@ class BasePlant(BaseModel):
     water_need: Optional[float] = None
     pollinators: Optional[str] = None
 
+
+class CreatePlant(BasePlant):
     @model_validator(mode="after")
     def validate_ages(self):
         if self.max_age < self.age:
@@ -24,12 +26,15 @@ class BasePlant(BaseModel):
         return self
 
 
-class CreatePlant(BasePlant):
-    pass
-
-
 class UpdatePlant(BasePlant):
-    pass
+    @model_validator(mode="after")
+    def validate_ages(self):
+        if self.max_age < self.age:
+            raise ValueError("Max age needs to be higher than the actual age.")
+        if self.reproduction_age > self.max_age:
+            raise ValueError("Max age needs to be higher than the reproduction age.")
+
+        return self
 
 
 class UpdateEcosystemPlant(BaseModel):
