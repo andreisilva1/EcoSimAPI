@@ -333,8 +333,8 @@ class EcoSystemService:
 
     async def simulate(self, ecosystem_id: UUID):
         ecosystem = await self.get(ecosystem_id)
-
         results = []
+        results.append({"time": ecosystem.cycle})
         organisms: List[Organism] = ecosystem.organisms
         plants: List[Plant] = ecosystem.plants
 
@@ -483,8 +483,15 @@ class EcoSystemService:
         elif actual_cycle == ActivityCycle.crepuscular:
             ecosystem.cycle = ActivityCycle.diurnal
             ecosystem.days += 1
+            WATER_TO_ADD = random.randint(
+                ecosystem.minimum_water_to_add_per_simulation,
+                ecosystem.max_water_to_add_per_simulation,
+            )
+            ecosystem.water_available += WATER_TO_ADD
+            results.append({f"{WATER_TO_ADD} water were added to the ecosystem."})
             if ecosystem.days % 3 == 0:
                 ecosystem.year += 1
+
                 for entity in (*ecosystem.organisms, *ecosystem.plants):
                     entity.age += 1
 
