@@ -1,12 +1,18 @@
 from typing import Optional
 from uuid import UUID, uuid4
 
-from fastapi import HTTPException, Response, status
+from fastapi import Response
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.api.exceptions.exceptions import (
+    BLANK_UPDATE_FIELDS,
+    RESOURCE_ID_NOT_FOUND,
+    RESOURCE_NAME_ALREADY_EXISTS,
+    RESOURCE_NAME_NOT_FOUND,
+)
 from app.api.schemas.organism import CreateOrganism, UpdateOrganism
 from app.database.enums import (
     ActivityCycle,
@@ -31,10 +37,7 @@ class OrganismService:
 
         organisms = query.all()
         if not organisms:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="No organism found with the name provided.",
-            )
+            raise RESOURCE_NAME_NOT_FOUND("organism")
         return organisms
 
     async def verify_if_organism_exists(self, organism_name):
@@ -49,10 +52,8 @@ class OrganismService:
         )
         organism = organism.scalar_one_or_none()
         if not organism:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="No organism found with the ID provided.",
-            )
+            raise RESOURCE_ID_NOT_FOUND("organism")
+
         return organism
 
     async def add(
@@ -66,10 +67,8 @@ class OrganismService:
     ):
         existent_organism = await self.verify_if_organism_exists(create_organism.name)
         if existent_organism:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="A organism with this name already exists.",
-            )
+            raise RESOURCE_NAME_ALREADY_EXISTS("organism")
+
         predators_orm, preys_orm = [], []
         if create_organism.predator:
             predators_string = (
@@ -166,10 +165,7 @@ class OrganismService:
             if value is not None:
                 update[key] = value
         if not update:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="No information to update has been provided.",
-            )
+            raise BLANK_UPDATE_FIELDS()
         for key, value in update.items():
             try:
                 setattr(organism, key, value)
@@ -185,10 +181,8 @@ class OrganismService:
     async def delete(self, organism_id: UUID):
         organism = await self.get_organism_by_id(organism_id)
         if not organism:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="No organism found with the name or ID provided.",
-            )
+            raise RESOURCE_ID_NOT_FOUND("organism")
+
         await self.session.delete(organism)
         await self.session.commit()
         return Response(status_code=204)

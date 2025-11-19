@@ -1,11 +1,17 @@
 from uuid import UUID, uuid4
 
-from fastapi import HTTPException, Response, status
+from fastapi import Response
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.api.exceptions.exceptions import (
+    POLLINATORS_NOT_FOUND,
+    RESOURCE_NAME_ALREADY_EXISTS,
+    RESOURCE_NAME_NOT_FOUND,
+    RESOURCE_NAME_OR_ID_NOT_FOUND,
+)
 from app.api.schemas.plant import CreatePlant, UpdatePlant
 from app.database.enums import PlantType
 from app.database.models import Organism, Plant
@@ -22,10 +28,8 @@ class PlantService:
 
         plants = query.all()
         if not plants:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="No plant found with the name provided.",
-            )
+            raise RESOURCE_NAME_NOT_FOUND("plant")
+
         return JSONResponse(
             status_code=200, content=jsonable_encoder({"plants": plants})
         )
@@ -45,10 +49,7 @@ class PlantService:
             )
         plant = plant.scalar_one_or_none()
         if not plant:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"No organism found with the name or ID provided ({plant_name_or_id}).",
-            )
+            raise RESOURCE_NAME_OR_ID_NOT_FOUND("plant")
         return plant
 
     async def verify_if_pollinator_exists(self, pollinator_name: str):
@@ -58,10 +59,7 @@ class PlantService:
 
         pollinators = result.scalars().all()
         if not pollinators:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"No organism with that name was found: ({pollinator_name}). You can delete it from the pollinators field or correct its name.",
-            )
+            raise POLLINATORS_NOT_FOUND(pollinator_name)
         return pollinators
 
     async def get_pollinators_and_convert_to_organisms(self, pollinators: str):
@@ -85,10 +83,7 @@ class PlantService:
     async def add(self, plant: CreatePlant, type: PlantType):
         existent_plant = await self.verify_if_plant_exists(plant.name)
         if existent_plant:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="A plant with this name already exists.",
-            )
+            raise RESOURCE_NAME_ALREADY_EXISTS("plant")
         pollinators_converted = []
         if plant.pollinators:
             pollinators_converted = await self.get_pollinators_and_convert_to_organisms(
@@ -128,10 +123,7 @@ class PlantService:
         if "name" in update_infos.keys():
             existent_plant = await self.verify_if_plant_exists(update_infos["name"])
             if existent_plant:
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail="A plant with this name already exists.",
-                )
+                raise RESOURCE_NAME_ALREADY_EXISTS("plant")
         for key, value in update_infos.items():
             if key == "pollinators":
                 update_infos[

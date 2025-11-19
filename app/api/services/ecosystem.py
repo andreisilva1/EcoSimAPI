@@ -2,13 +2,20 @@ import random
 from typing import List
 from uuid import UUID, uuid4
 
-from fastapi import HTTPException, Response, status
+from fastapi import Response
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from app.api.exceptions.exceptions import (
+    BLANK_UPDATE_FIELDS,
+    RESOURCE_ID_NOT_FOUND,
+    RESOURCE_NAME_ALREADY_EXISTS,
+    RESOURCE_NAME_NOT_FOUND,
+    RESOURCE_NOT_FOUND_IN_RELATIONSHIP,
+)
 from app.api.interactions.interaction_functions import (
     collect_and_transport_nectar,
     drink_water,
@@ -45,11 +52,7 @@ class EcoSystemService:
                 selectinload(Ecosystem.plants).selectinload(Plant.pollinators),
             )
         )
-        if not ecosystem:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="No ecosystem found with the provided ID.",
-            )
+
         return ecosystem
 
     async def get_all_ecosystem_organisms(self, ecosystem_name_or_id: str):
@@ -65,6 +68,8 @@ class EcoSystemService:
             )
         )
         ecosystem = ecosystem.scalar_one_or_none()
+        if not ecosystem:
+            raise RESOURCE_ID_NOT_FOUND("ecosystem")
         return JSONResponse(
             status_code=200,
             content=jsonable_encoder({"all_organisms": ecosystem.organisms}),
@@ -104,10 +109,7 @@ class EcoSystemService:
         )
         existent_ecosystem = query.scalar_one_or_none()
         if existent_ecosystem:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="A ecosystem with this name already exists.",
-            )
+            raise RESOURCE_NAME_ALREADY_EXISTS("ecosystem")
         new_eco_system = Ecosystem(id=uuid4(), **ecosystem.model_dump())
         self.session.add(new_eco_system)
         await self.session.commit()
@@ -125,10 +127,7 @@ class EcoSystemService:
             if value:
                 updates[key] = value
         if not updates:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="No update fields has been filled.",
-            )
+            raise BLANK_UPDATE_FIELDS()
         for key, value in updates.items():
             setattr(ecosystem, key, value)
         await self.session.commit()
@@ -196,10 +195,7 @@ class EcoSystemService:
         plant = await self.extract_plant_by_name(plant_name)
 
         if not plant:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="No plant found with the provided name.",
-            )
+            raise RESOURCE_NAME_NOT_FOUND("plant")
 
         new_plant_to_this_ecosystem = Plant(
             **plant.model_dump(exclude=["id", "health", "age"]), id=uuid4()
@@ -222,10 +218,7 @@ class EcoSystemService:
         organism = await self.extract_organism_by_name(organism_name)
 
         if not organism:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="No organism found with the provided name.",
-            )
+            raise RESOURCE_NAME_NOT_FOUND("organism")
 
         new_organism_to_this_ecosystem = Organism(
             **organism.model_dump(exclude=["id"]),
@@ -252,16 +245,9 @@ class EcoSystemService:
             ecosystem.id, organism_name
         )
         if not ecosystem:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="The provided ecosystem doesn't exist.",
-            )
-
+            raise RESOURCE_ID_NOT_FOUND("ecosystem")
         if not organisms:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="The provided organism doesn't exist in the ecosystem.",
-            )
+            raise RESOURCE_NOT_FOUND_IN_RELATIONSHIP(one="ecosystem", many="orgnaism")
 
         updated_fields = {}
         for key, value in updated_organism.model_dump().items():
@@ -306,16 +292,10 @@ class EcoSystemService:
             ecosystem.id, plant_name
         )
         if not ecosystem:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="The provided ecosystem doesn't exist.",
-            )
+            raise RESOURCE_ID_NOT_FOUND("ecosystem")
 
         if not plants:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="The provided plant doesn't exist in the ecosystem.",
-            )
+            raise RESOURCE_NOT_FOUND_IN_RELATIONSHIP(one="ecosystem", many="plant")
 
         updated_fields = {}
         for key, value in updated_plant.model_dump().items():
@@ -533,10 +513,7 @@ class EcoSystemService:
         ]
 
         if not organisms_to_delete:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="No organism found in that ecosystem with the ID or name provided.",
-            )
+            raise RESOURCE_NOT_FOUND_IN_RELATIONSHIP(one="ecosystem", many="'")
 
         for organism in organisms_to_delete:
             ecosystem.organisms.remove(organism)
@@ -563,10 +540,7 @@ class EcoSystemService:
         ]
 
         if not plants_to_delete:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="No organism found in that ecosystem with the ID or name provided.",
-            )
+            raise RESOURCE_NOT_FOUND_IN_RELATIONSHIP(one="ecosystem", many="plant")
         for plant in plants_to_delete:
             ecosystem.plants.remove(plant)
             await self.session.delete(plant)
@@ -580,10 +554,7 @@ class EcoSystemService:
             await self.session.delete(ecosystem)
             await self.session.commit()
             return Response(status_code=204)
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="No ecosystem found with the provided ID",
-        )
+        raise RESOURCE_ID_NOT_FOUND("ecosystem")
 
     async def death_cause_and_delete_organism(self, organism: Organism | Plant):
         await self.session.delete(organism)

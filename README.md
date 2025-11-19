@@ -104,6 +104,9 @@ app/
 │   ├── dependencies.py
 │   ├── __init__.py
 │   │
+│   ├── exceptions/
+│   │   ├── exceptions.py
+│   │
 │   ├── interactions/
 │   │   ├── attack_interactions.py
 │   │   ├── interaction_functions.py
