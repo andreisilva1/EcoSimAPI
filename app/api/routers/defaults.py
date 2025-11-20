@@ -12,7 +12,7 @@ router = APIRouter(prefix="/defaults", tags=["Defaults"])
 
 @router.post(
     "/add_defaults",
-    summary="Adds 20 standard organisms and 5 standard plants to test the system immediately!",
+    summary="Adds 20 default organisms and 10 default plants to test the system immediately!",
 )
 async def add_default_organisms_and_plants(session: SessionDep):
     default_organisms, default_plants = return_defaults()

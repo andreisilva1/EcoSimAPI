@@ -136,11 +136,10 @@ app/
 │   │   ├── test_plant.py
 │   │
 │   └── utils/
-│   │   ├── defaults.py
+│       ├── defaults.py
 │       └── utils.py
 │
 └── database/
-    ├── config.py
     ├── enums.py
     ├── interactions_list.py
     ├── models.py
@@ -193,6 +192,15 @@ Swagger UI is available at:
 ----------
 
 ## 🌐 Endpoints
+
+## 🤖 Default Routes
+
+| Method | Path                                                               | Name                                  | Description |
+|--------|--------------------------------------------------------------------|----------------------------------------|-------------|
+| POST    | `defaults/add_defaults`                     | add_default_organisms_and_plants           | Adds 20 default organisms and 10 default plants to test the system immediately! |
+
+
+---
 
 ## 🌱 Ecosystem Routes
 
