@@ -20,9 +20,12 @@ from app.database.enums import (
 router = APIRouter(prefix="/organism", tags=["Organism"])
 
 
-@router.post("/defaults")
-async def filled_with_default_organisms(service: OrganismServiceDep):
-    return await service.add_default()
+@router.get(
+    "/all",
+    description="If detailed is True, will return all the information about the base organisms, else, just the names",
+)
+async def get_all_organisms(service: OrganismServiceDep, detailed: bool = False):
+    return await service.get_organisms(detailed)
 
 
 @router.get("/")

@@ -28,6 +28,16 @@ class OrganismService:
     def __init__(self, session: AsyncSession):
         self.session = session
 
+    async def get_organisms(self, detailed: bool):
+        query = await self.session.scalars(select(Organism))
+        organisms = query.all()
+        if not detailed:
+            organisms = [organism.name for organism in organisms]
+        return JSONResponse(
+            status_code=200,
+            content=jsonable_encoder({"organisms": organisms}),
+        )
+
     async def get_multiple_organisms_by_name(self, organism_name: str):
         query = await self.session.scalars(
             select(Organism).where(

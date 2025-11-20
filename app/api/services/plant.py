@@ -21,6 +21,16 @@ class PlantService:
     def __init__(self, session: AsyncSession):
         self.session = session
 
+    async def get_plants(self, detailed: bool):
+        query = await self.session.scalars(select(Plant))
+        plants = query.all()
+        if not detailed:
+            plants = [plant.name for plant in plants]
+        return JSONResponse(
+            status_code=200,
+            content=jsonable_encoder({"plants": plants}),
+        )
+
     async def get_multiple_plants_by_name(self, plant_name: str):
         query = await self.session.scalars(
             select(Plant).where(func.lower(Plant.name).like(f"%{plant_name.lower()}%"))

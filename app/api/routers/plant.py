@@ -7,6 +7,14 @@ from app.database.enums import PlantType
 router = APIRouter(prefix="/plant", tags=["Plants"])
 
 
+@router.get(
+    "/all",
+    description="If detailed is True, will return all the information about the base plants, else, just the names",
+)
+async def get_all_plants(service: PlantServiceDep, detailed: bool = False):
+    return await service.get_plants(detailed)
+
+
 @router.get("/")
 async def get_plants_by_name(search: str, service: PlantServiceDep):
     return await service.get_multiple_plants_by_name(search)

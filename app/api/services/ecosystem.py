@@ -520,7 +520,7 @@ class EcoSystemService:
         ]
 
         if not organisms_to_delete:
-            raise RESOURCE_NOT_FOUND_IN_RELATIONSHIP(one="ecosystem", many="'")
+            raise RESOURCE_NOT_FOUND_IN_RELATIONSHIP(one="ecosystem", many="organism")
 
         for organism in organisms_to_delete:
             ecosystem.organisms.remove(organism)
