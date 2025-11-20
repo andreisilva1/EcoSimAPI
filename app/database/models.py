@@ -69,9 +69,13 @@ class Organism(SQLModel, table=True):
     )
 
     # Behavior
-    activity_cycle: Optional[ActivityCycle] = None  # day, night...
-    speed: Optional[Speed] = Speed.normal
-    social_behavior: Optional[SocialBehavior] = None  # solitary, pack, herd
+    activity_cycle: Optional[ActivityCycle] = Field(
+        default=ActivityCycle.diurnal
+    )  # day, night...
+    speed: Optional[Speed] = Field(default=Speed.normal)
+    social_behavior: Optional[SocialBehavior] = Field(
+        default=SocialBehavior.solitary
+    )  # solitary, pack, herd
 
     ecosystem_id: UUID = Field(foreign_key="ecosystem.id", nullable=True)
     ecosystem: "Ecosystem" = Relationship(
@@ -91,15 +95,15 @@ class Plant(SQLModel, table=True):
     type: PlantType
 
     # Physical / Demography
-    weight: Optional[float] = None  # biomass
-    size: Optional[float] = None
+    weight: Optional[float] = Field(default=0)  # biomass
+    size: Optional[float] = Field(default=0)
     age: float = Field(ge=0, default=0)
-    max_age: Optional[float] = None
-    reproduction_age: Optional[float] = None
-    fertility_rate: Optional[int] = None  # number of sements by cycle
+    max_age: Optional[float] = Field(default=1)
+    reproduction_age: Optional[float] = Field(default=0)
+    fertility_rate: Optional[int] = Field(default=0)  # number of sements by cycle
 
     # Needs
-    water_need: Optional[float] = None
+    water_need: Optional[float] = Field(default=0)
 
     # Interactions
     pollinators: Optional[List["Organism"]] = Relationship(

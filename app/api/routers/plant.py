@@ -21,7 +21,7 @@ async def create_plant(plant: CreatePlant, type: PlantType, service: PlantServic
 async def update_plant(
     update_plant: UpdatePlant, plant_name_or_id: str, service: PlantServiceDep
 ):
-    return await service.update(plant_name_or_id, update_plant)
+    return await service.update_base_plant(plant_name_or_id, update_plant)
 
 
 @router.delete("/{plant_name_or_id}/delete")

@@ -55,3 +55,11 @@ class POLLINATORS_NOT_FOUND(HTTPException):
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"No organism with that name was found: ({pollinator_name}). You can delete it from the pollinators field or correct its name.",
         )
+
+
+class ALL_DEFAULTS_ALREADY_EXISTS(HTTPException):
+    def __init__(self, resource_name: str):
+        super().__init__(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"All the default {resource_name} already exists",
+        )

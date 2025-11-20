@@ -114,7 +114,7 @@ class PlantService:
             ),
         )
 
-    async def update(self, plant_name_or_id: str, update_plant: UpdatePlant):
+    async def update_base_plant(self, plant_name_or_id: str, update_plant: UpdatePlant):
         plant = await self.get_plant_by_name_or_id(plant_name_or_id)
         update_infos = {}
         for key, value in update_plant:

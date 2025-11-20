@@ -113,6 +113,7 @@ app/
 │   │
 │   ├── routers/
 │   │   ├── ecosystem.py
+│   │   ├── defaults.py
 │   │   ├── organism.py
 │   │   ├── plant.py
 │   │   └── __init__.py
@@ -135,6 +136,7 @@ app/
 │   │   ├── test_plant.py
 │   │
 │   └── utils/
+│   │   ├── defaults.py
 │       └── utils.py
 │
 └── database/
