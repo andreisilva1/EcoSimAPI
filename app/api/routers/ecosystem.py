@@ -13,6 +13,11 @@ from ..schemas.ecosystem import CreateEcoSystem, UpdateEcoSystem
 router = APIRouter(prefix="/ecosystem", tags=["Ecosystem"])
 
 
+@router.get("/all")
+async def get_all_ecosystems(service: EcoSystemServiceDep):
+    return await service.get_all_ecosystems()
+
+
 @router.get("/{ecosystem_name_or_id}/organisms")
 async def get_all_ecosystem_organisms(
     ecosystem_name_or_id: str, service: EcoSystemServiceDep

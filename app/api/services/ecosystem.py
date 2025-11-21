@@ -60,6 +60,13 @@ class EcoSystemService:
 
         return ecosystem
 
+    async def get_all_ecosystems(self):
+        query = await self.session.scalars(select(Ecosystem))
+        ecosystems = query.all()
+        return JSONResponse(
+            status_code=200, content=jsonable_encoder({"ecosystems": ecosystems})
+        )
+
     async def get_all_ecosystem_organisms(self, ecosystem_name_or_id: str):
         try:
             valid_uuid = UUID(ecosystem_name_or_id)
