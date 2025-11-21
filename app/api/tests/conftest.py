@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
 from sqlmodel import SQLModel
 
-from app.database.session import get_session
+from app.database.session import get_session, set_sessionmaker
 from app.main import app
 
 TEST_DATABASE_URL = "sqlite+aiosqlite:///:memory:"
@@ -18,6 +18,8 @@ engine = create_async_engine(
 TestingSessionLocal = sessionmaker(
     bind=engine, class_=AsyncSession, expire_on_commit=False
 )
+
+set_sessionmaker(TestingSessionLocal)
 
 
 @pytest_asyncio.fixture(scope="session", autouse=True)

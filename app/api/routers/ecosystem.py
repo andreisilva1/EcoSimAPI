@@ -42,7 +42,7 @@ async def simulate(ecosystem_id: str, service: EcoSystemServiceDep, cycles: int 
             "simulation_id": simulation_id,
         }
     else:
-        return await service.simulate(ecosystem_id, simulation_id)
+        return await service.simulate(verify_uuid(ecosystem_id), simulation_id)
 
 
 @router.get("/{ecosystem_id}/read_simulation")

@@ -5,6 +5,8 @@ from sqlmodel import SQLModel
 
 engine: AsyncEngine | None = None
 
+_sessionmaker_global = None
+
 
 # Tries to connect with the DATABASE_URL provided in .env, and use SQLite as a fallback
 async def init_engine(database_url: str) -> AsyncEngine:
@@ -24,14 +26,21 @@ async def create_db_tables():
 
 
 def get_sessionmaker():
-    return sessionmaker(
-        bind=engine,
-        expire_on_commit=False,
-        class_=AsyncSession,
-    )
+    return _sessionmaker_global
+
+
+def set_sessionmaker(sm):
+    global _sessionmaker_global
+    _sessionmaker_global = sm
 
 
 async def get_session():
     async_session = get_sessionmaker()
     async with async_session() as session:
         yield session
+
+
+RealSessionLocal = sessionmaker(
+    bind=engine, class_=AsyncSession, expire_on_commit=False
+)
+set_sessionmaker(RealSessionLocal)

@@ -115,7 +115,7 @@ async def test_simulate_ecosystem(db_session: AsyncSession, client: AsyncClient)
             },
         )
 
-    response = await client.get(f"/ecosystem/{new_ecosystem_id}/simulate")
+    response = await client.get(f"/ecosystem/{new_ecosystem_id}/simulate?cycles=1")
     assert response.status_code == 200
 
 
