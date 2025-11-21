@@ -1,4 +1,6 @@
+import json
 import random
+import zlib
 from typing import List
 from uuid import UUID, uuid4
 
@@ -11,6 +13,7 @@ from sqlalchemy.orm import selectinload
 
 from app.api.exceptions.exceptions import (
     BLANK_UPDATE_FIELDS,
+    ECOSYSTEM_ALREADY_IN_SIMULATION,
     RESOURCE_ID_NOT_FOUND,
     RESOURCE_NAME_ALREADY_EXISTS,
     RESOURCE_NAME_NOT_FOUND,
@@ -30,9 +33,11 @@ from app.api.schemas.ecosystem import (
 )
 from app.api.schemas.organism import UpdateEcosystemOrganism
 from app.api.schemas.plant import UpdateEcosystemPlant
-from app.database.enums import ActivityCycle, OrganismType
+from app.api.utils.utils import make_json_serializable
+from app.database.enums import ActivityCycle, OrganismType, SimulationStatus
 from app.database.interactions_list import ACTIONS_BY_ORGANISM_TYPE
-from app.database.models import Ecosystem, Organism, Plant
+from app.database.models import Ecosystem, Organism, Plant, Simulation
+from app.database.session import get_sessionmaker
 
 
 class EcoSystemService:
@@ -331,176 +336,250 @@ class EcoSystemService:
             status_code=200, content={"message": f"Plant {plant_name} updated."}
         )
 
-    async def simulate(self, ecosystem_id: UUID):
+    async def simulate(self, ecosystem_id: UUID, simulation_id: UUID, cycles: int = 1):
+        async_session = get_sessionmaker()
+        async with async_session() as session:
+            self.session = session
         ecosystem = await self.get(ecosystem_id)
-        results = []
-        results.append({"time": ecosystem.cycle})
+        ecosystem.simulation_status = SimulationStatus.finished
+        await self.session.commit()
+
+        if ecosystem.simulation_status == SimulationStatus.processing:
+            raise ECOSYSTEM_ALREADY_IN_SIMULATION(ecosystem.name)
+
+        results = {}
         organisms: List[Organism] = ecosystem.organisms
         plants: List[Plant] = ecosystem.plants
 
-        for organism in organisms:
-            food_consumed = 0
-            possible_interactions = ACTIONS_BY_ORGANISM_TYPE[organism.type]
-            actions = random.sample(possible_interactions, 2)
-            for action in actions:
-                if action == "rest":
-                    results.append(rest(organism))
+        ecosystem.simulation_status = SimulationStatus.processing
+        await self.session.commit()
+        if not cycles or cycles <= 0:
+            cycles = 1
+        print(cycles)
+        for n in range(cycles):
+            results[f"day {n + 1}"] = []
+            for organism in organisms:
+                food_consumed = 0
+                possible_interactions = ACTIONS_BY_ORGANISM_TYPE[organism.type]
+                actions = random.sample(possible_interactions, 2)
+                for action in actions:
+                    if action == "rest":
+                        results[f"day {n + 1}"].append(rest(organism))
 
-                if action == "reproduce" and organism.age >= organism.reproduction_age:
-                    if not organism.pregnant:
-                        organism_to_reproduce = await self.session.scalars(
-                            select(Organism).where(
-                                Organism.name == organism.name,
-                                Organism.id != organism.id,
-                                Organism.pregnant.is_(False),
+                    if (
+                        action == "reproduce"
+                        and organism.age >= organism.reproduction_age
+                    ):
+                        if not organism.pregnant:
+                            organism_to_reproduce = await self.session.scalars(
+                                select(Organism).where(
+                                    Organism.name == organism.name,
+                                    Organism.id != organism.id,
+                                    Organism.pregnant.is_(False),
+                                )
                             )
-                        )
-                        organism_to_reproduce = organism_to_reproduce.all()
-                        if organism_to_reproduce:
-                            results.append(reproduce(organism_to_reproduce))
+                            organism_to_reproduce = organism_to_reproduce.all()
+                            if organism_to_reproduce:
+                                results[f"day {n + 1}"].append(
+                                    reproduce(organism_to_reproduce)
+                                )
+                            else:
+                                results[f"day {n + 1}"].append(
+                                    {f"No partner has been found to {organism.name}."}
+                                )
                         else:
-                            results.append(
-                                {f"No partner has been found to {organism.name}."}
+                            organism.pregnant = False
+                            await self.add_organism_to_a_eco_system(
+                                ecosystem.id, organism.name, False
                             )
-                    else:
-                        organism.pregnant = False
-                        await self.add_organism_to_a_eco_system(
-                            ecosystem.id, organism.name, False
-                        )
-                        results.append({f"A new {organism.name} has born!"})
+                            results[f"day {n + 1}"].append(
+                                {f"A new {organism.name} has born!"}
+                            )
 
-                if action == "drink_water":
-                    results.append(drink_water(ecosystem, organism))
+                    if action == "drink_water":
+                        results[f"day {n + 1}"].append(drink_water(ecosystem, organism))
 
-                if organism.type == OrganismType.predator:
-                    if action == "hunt_prey":
-                        attacker = organism
-                        deffender = random.choice(organisms)
-                        while deffender == attacker:
+                    if organism.type == OrganismType.predator:
+                        if action == "hunt_prey":
+                            attacker = organism
                             deffender = random.choice(organisms)
-                        results.append(hunt_prey(attacker, deffender))
-                        if deffender.health <= 0:
-                            food_consumed += random.randint(
-                                0, int(deffender.weight // 2)
+                            while deffender == attacker:
+                                deffender = random.choice(organisms)
+                            results[f"day {n + 1}"].append(
+                                hunt_prey(attacker, deffender)
                             )
-
-                elif organism.type == OrganismType.herbivore:
-                    if action == "graze_plants":
-                        pollination_targets_in_the_ecosystem = (
-                            await self.get_pollination_targets_in_the_ecosystem(
-                                organism, ecosystem
-                            )
-                        )
-                        pollination_target = random.choice(
-                            pollination_targets_in_the_ecosystem
-                        )
-                        results.append(graze_plants(pollination_target, organism))
-
-                elif organism.type == OrganismType.omnivore:
-                    if action == "find_food":
-                        action = random.choice(["hunt_prey", "graze_plants"])
-                        match action:
-                            case "hunt_prey":
-                                results.append(hunt_prey(organism, organisms))
-                            case "graze_plants":
-                                targets = (
-                                    await self.convert_pollination_target_to_plant(
-                                        organism.pollination_target
-                                    )
+                            if deffender.health <= 0:
+                                food_consumed += random.randint(
+                                    0, int(deffender.weight // 2)
                                 )
-                                if not targets:
-                                    results.append(
-                                        {f"No pollinators found for {organism.name}"}
+
+                    elif organism.type == OrganismType.herbivore:
+                        if action == "graze_plants":
+                            pollination_targets_in_the_ecosystem = (
+                                await self.get_pollination_targets_in_the_ecosystem(
+                                    organism, ecosystem
+                                )
+                            )
+                            pollination_target = (
+                                random.choice(pollination_targets_in_the_ecosystem)
+                                if pollination_targets_in_the_ecosystem
+                                else None
+                            )
+                            results[f"day {n + 1}"].append(
+                                graze_plants(pollination_target, organism)
+                            )
+
+                    elif organism.type == OrganismType.omnivore:
+                        if action == "find_food":
+                            action = random.choice(["hunt_prey", "graze_plants"])
+                            match action:
+                                case "hunt_prey":
+                                    attacker = organism
+                                    deffender = random.choice(organisms)
+                                    while deffender == attacker:
+                                        deffender = random.choice(organisms)
+                                    results[f"day {n + 1}"].append(
+                                        hunt_prey(organism, deffender)
                                     )
-                                else:
-                                    results.append(graze_plants(targets, organism))
-                elif organism.type == OrganismType.pollinator:
-                    if action == "collect_nectar":
-                        pollination_targets_in_ecosystem = (
-                            await self.get_pollination_targets_in_the_ecosystem(
-                                organism, ecosystem
+                                    if deffender.health <= 0:
+                                        food_consumed += random.randint(
+                                            0, int(deffender.weight // 2)
+                                        )
+                                case "graze_plants":
+                                    targets = (
+                                        await self.convert_pollination_target_to_plant(
+                                            organism.pollination_target
+                                        )
+                                    )
+                                    if not targets:
+                                        results[f"day {n + 1}"].append(
+                                            {
+                                                f"No pollinators found for {organism.name}"
+                                            }
+                                        )
+                                    else:
+                                        results[f"day {n + 1}"].append(
+                                            graze_plants(targets, organism)
+                                        )
+                    elif organism.type == OrganismType.pollinator:
+                        if action == "collect_nectar":
+                            pollination_targets_in_ecosystem = (
+                                await self.get_pollination_targets_in_the_ecosystem(
+                                    organism, ecosystem
+                                )
                             )
-                        )
-                        if (
-                            not organism.pollination_target
-                            or not pollination_targets_in_ecosystem
-                        ):
-                            results.append(
-                                {
-                                    f"No {organism.name} pollination targets found in this ecosystem "
-                                }
-                            )
-                        else:
-                            (
-                                results_collect_nectar,
-                                results_transport_nectar,
-                                plant_to_transport_nectar,
-                                plant_to_transport_nectar_population_increment,
-                            ) = collect_and_transport_nectar(
-                                organism, pollination_targets_in_ecosystem
-                            )
-                            for _ in range(
-                                plant_to_transport_nectar_population_increment
+                            if (
+                                not organism.pollination_target
+                                or not pollination_targets_in_ecosystem
                             ):
-                                await self.add_plant_to_a_ecosystem(
-                                    ecosystem.id, plant_to_transport_nectar.name
+                                results[f"day {n + 1}"].append(
+                                    {
+                                        f"No {organism.name} pollination targets found in this ecosystem "
+                                    }
                                 )
-                            results.append(
-                                [results_collect_nectar, results_transport_nectar],
-                            )
+                            else:
+                                (
+                                    results_collect_nectar,
+                                    results_transport_nectar,
+                                    plant_to_transport_nectar,
+                                    plant_to_transport_nectar_population_increment,
+                                ) = collect_and_transport_nectar(
+                                    organism, pollination_targets_in_ecosystem
+                                )
+                                for _ in range(
+                                    plant_to_transport_nectar_population_increment
+                                ):
+                                    await self.add_plant_to_a_ecosystem(
+                                        ecosystem.id, plant_to_transport_nectar.name
+                                    )
+                                results[f"day {n + 1}"].append(
+                                    [results_collect_nectar, results_transport_nectar],
+                                )
 
-            if (
-                organism.health <= 0
-                or organism.thirst >= 100
-                or organism.hunger >= 100
-                or organism.age > organism.max_age
-            ):
-                results.append(await self.death_cause_and_delete_organism(organism))
-                continue
+                if (
+                    organism.health <= 0
+                    or organism.thirst >= 100
+                    or organism.hunger >= 100
+                    or organism.age > organism.max_age
+                ):
+                    results[f"day {n + 1}"].append(
+                        await self.death_cause_and_delete_organism(organism)
+                    )
+                    continue
 
-            if food_consumed < organism.food_consumption:
-                HEALTH_LOST = random.randint(5, 15)
-                organism.health -= HEALTH_LOST
-                results.append(
-                    {
-                        f"{organism.name} don't eat the sufficient for the day and lost {HEALTH_LOST}"
-                    }
+                if food_consumed < organism.food_consumption:
+                    HEALTH_LOST = random.randint(5, 15)
+                    organism.health -= HEALTH_LOST
+                    results[f"day {n + 1}"].append(
+                        {
+                            f"{organism.name} don't eat the sufficient for the day and lost {HEALTH_LOST}"
+                        }
+                    )
+
+            for plant in plants:
+                if plant.weight <= 0 or plant.age >= plant.max_age:
+                    results[f"day {n + 1}"].append(
+                        await self.death_cause_and_delete_organism(plant)
+                    )
+                else:
+                    results[f"day {n + 1}"].append(drink_water(ecosystem, plant))
+
+            actual_cycle = ecosystem.cycle
+            if actual_cycle == ActivityCycle.diurnal:
+                ecosystem.cycle = ActivityCycle.nocturnal
+
+            elif actual_cycle == ActivityCycle.nocturnal:
+                ecosystem.cycle = ActivityCycle.crepuscular
+
+            elif actual_cycle == ActivityCycle.crepuscular:
+                ecosystem.cycle = ActivityCycle.diurnal
+                ecosystem.days += 1
+
+                WATER_TO_ADD = random.randint(
+                    ecosystem.minimum_water_to_add_per_simulation,
+                    ecosystem.max_water_to_add_per_simulation,
                 )
+                ecosystem.water_available += WATER_TO_ADD
+                results[f"day {n + 1}"].append(
+                    {f"{WATER_TO_ADD} water were added to the ecosystem."}
+                )
+                if ecosystem.days % 3 == 0:
+                    ecosystem.year += 1
 
-        for plant in plants:
-            if plant.weight <= 0 or plant.age >= plant.max_age:
-                results.append(await self.death_cause_and_delete_organism(plant))
-            else:
-                results.append(drink_water(ecosystem, plant))
+                    for entity in (*ecosystem.organisms, *ecosystem.plants):
+                        entity.age += 1
+            await self.session.commit()
 
-        actual_cycle = ecosystem.cycle
-        if actual_cycle == ActivityCycle.diurnal:
-            ecosystem.cycle = ActivityCycle.nocturnal
-
-        elif actual_cycle == ActivityCycle.nocturnal:
-            ecosystem.cycle = ActivityCycle.crepuscular
-
-        elif actual_cycle == ActivityCycle.crepuscular:
-            ecosystem.cycle = ActivityCycle.diurnal
-            ecosystem.days += 1
-            WATER_TO_ADD = random.randint(
-                ecosystem.minimum_water_to_add_per_simulation,
-                ecosystem.max_water_to_add_per_simulation,
-            )
-            ecosystem.water_available += WATER_TO_ADD
-            results.append({f"{WATER_TO_ADD} water were added to the ecosystem."})
-            if ecosystem.days % 3 == 0:
-                ecosystem.year += 1
-
-                for entity in (*ecosystem.organisms, *ecosystem.plants):
-                    entity.age += 1
-
+        ecosystem.simulation_status = SimulationStatus.finished
+        serializable_result = make_json_serializable(results)
+        results_to_bytes = json.dumps(serializable_result).encode("utf-8")
+        new_simulation = Simulation(
+            simulation_id=simulation_id,
+            ecosystem_id=ecosystem_id,
+            simulation_results=zlib.compress(results_to_bytes),
+        )
+        self.session.add(new_simulation)
         await self.session.commit()
 
-        return JSONResponse(
-            status_code=200,
-            content=jsonable_encoder({"interaction": results}),
+    async def read_simulation(self, ecosystem_name: str, simulation_id: UUID):
+        query = await self.session.execute(
+            select(Ecosystem).where(Ecosystem.name == ecosystem_name)
         )
+
+        ecosystem = query.scalar_one_or_none()
+
+        if not ecosystem:
+            raise RESOURCE_NAME_NOT_FOUND(ecosystem_name)
+
+        if ecosystem.simulation_status == SimulationStatus.processing:
+            raise ECOSYSTEM_ALREADY_IN_SIMULATION(ecosystem.name)
+
+        simulation = await self.session.get(Simulation, simulation_id)
+
+        if not simulation:
+            raise
+        results_to_json = zlib.decompress(simulation.simulation_results)
+        return json.loads(results_to_json.decode("utf-8"))
 
     async def remove_organism_from_a_ecosystem(
         self, ecosystem_id: UUID, organism_name_or_id: UUID | str

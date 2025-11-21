@@ -10,9 +10,16 @@ from .enums import (
     DietType,
     OrganismType,
     PlantType,
+    SimulationStatus,
     SocialBehavior,
     Speed,
 )
+
+
+class Simulation(SQLModel, table=True):
+    simulation_id: UUID = Field(default_factory=uuid4, primary_key=True)
+    ecosystem_id: UUID
+    simulation_results: str
 
 
 class PredationLink(SQLModel, table=True):
@@ -140,3 +147,4 @@ class Ecosystem(SQLModel, table=True):
         sa_relationship_kwargs={"lazy": "selectin", "cascade": "all, delete-orphan"},
     )
     year: Optional[int] = 0
+    simulation_status: SimulationStatus = Field(default=SimulationStatus.finished)

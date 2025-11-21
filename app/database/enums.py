@@ -38,3 +38,8 @@ class Speed(str, Enum):
     slow = "slow"
     normal = "normal"
     fast = "fast"
+
+
+class SimulationStatus(str, Enum):
+    processing = "PROCESSING"
+    finished = "FINISHED"

@@ -63,3 +63,19 @@ class ALL_DEFAULTS_ALREADY_EXISTS(HTTPException):
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"All the default {resource_name} already exists",
         )
+
+
+class ECOSYSTEM_ALREADY_IN_SIMULATION(HTTPException):
+    def __init__(self, resource_name: str):
+        super().__init__(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"The ecosystem {resource_name} is already in simulation.",
+        )
+
+
+class SIMULATION_NOT_EXISTS(HTTPException):
+    def __init__(self, resource_name: str):
+        super().__init__(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Simulation not found with that ID.",
+        )
