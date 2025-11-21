@@ -206,9 +206,11 @@ Swagger UI is available at:
 
 | Method | Path                                                               | Name                                  | Description |
 |--------|--------------------------------------------------------------------|----------------------------------------|-------------|
+| GET    | `/ecosystem/all`                     | get_all_ecosystems          | Get all the created ecosystems |
 | GET    | `/ecosystem/{ecosystem_name_or_id}/organisms`                     | get_all_ecosystem_organisms           | Get all organisms inside an ecosystem |
 | GET    | `/ecosystem/{ecosystem_name_or_id}/plants`                        | get_all_ecosystem_plants              | Get all plants inside an ecosystem |
 | GET    | `/ecosystem/{ecosystem_id}/simulate`                              | simulate                              | Run a simulation for the ecosystem |
+| GET    | `/ecosystem/{simulation_id}`                              | read_simulation                              | Return the simulation results |
 | POST   | `/ecosystem/create`                                               | create_eco_system                     | Create a new ecosystem |
 | POST   | `/ecosystem/organism/add`                                         | add_organism_to_a_eco_system          | Add an organism to an ecosystem |
 | POST   | `/ecosystem/plant/add`                                            | add_plant_to_a_eco_system             | Add a plant to an ecosystem |
@@ -226,6 +228,7 @@ Swagger UI is available at:
 
 | Method | Path                                               | Name            | Description |
 |--------|----------------------------------------------------|------------------|-------------|
+| GET    | `/organism/all`                                      | get_all_organisms     | Retrieve all the base organisms |
 | GET    | `/organism/`                                      | get_organism     | Search organisms by name |
 | POST   | `/organism/create`                                | create_organism  | Create a new organism |
 | PATCH  | `/organism/{organism_id}/update`                  | update_organism  | Update organism information |
@@ -238,6 +241,7 @@ Swagger UI is available at:
 
 | Method | Path                                               | Name               | Description |
 |--------|----------------------------------------------------|---------------------|-------------|
+| GET    | `/plant/all`                                      | get_all_plants     | Retrieve all the base plants |
 | GET    | `/plant/`                                   | get_plants_by_name  | Search plants by name |
 | POST   | `/plant/create`                                   | create_plant        | Create a new plant |
 | PATCH  | `/plant/{plant_name_or_id}/update`                | update_plant        | Update plant information |

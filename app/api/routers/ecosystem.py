@@ -32,7 +32,9 @@ async def get_all_ecosystem_plants(
     return await service.get_all_ecosystem_plants(ecosystem_name_or_id)
 
 
-@router.get("/{ecosystem_id}/simulate")
+@router.get(
+    "/{ecosystem_id}/simulate", summary="3 cycles = 1 day, 9 cycles = 3 days = 1 year"
+)
 async def simulate(ecosystem_id: str, service: EcoSystemServiceDep, cycles: int = 1):
     simulation_id = uuid4()
     if cycles > 1:
@@ -50,7 +52,7 @@ async def simulate(ecosystem_id: str, service: EcoSystemServiceDep, cycles: int 
         return await service.simulate(verify_uuid(ecosystem_id), simulation_id)
 
 
-@router.get("/{ecosystem_id}/read_simulation")
+@router.get("/{simulation_id}")
 async def read_simulation(
     service: EcoSystemServiceDep, ecosystem_name: str, simulation_id: str
 ):
