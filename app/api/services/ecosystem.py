@@ -346,10 +346,13 @@ class EcoSystemService:
     async def simulate(self, ecosystem_id: UUID, simulation_id: UUID, cycles: int = 1):
         async_session = get_sessionmaker()
         async with async_session() as session:
-            self.session = session
+            simulate_session = session
         ecosystem = await self.get(ecosystem_id)
+        if not ecosystem:
+            raise RESOURCE_ID_NOT_FOUND("ecosystem")
         ecosystem.simulation_status = SimulationStatus.finished
-        await self.session.commit()
+        await simulate_session.commit()
+        await simulate_session.refresh(ecosystem)
 
         if ecosystem.simulation_status == SimulationStatus.processing:
             raise ECOSYSTEM_ALREADY_IN_SIMULATION(ecosystem.name)
@@ -358,13 +361,20 @@ class EcoSystemService:
         organisms: List[Organism] = ecosystem.organisms
         plants: List[Plant] = ecosystem.plants
 
-        ecosystem.simulation_status = SimulationStatus.processing
-        await self.session.commit()
         if not cycles or cycles <= 0:
             cycles = 1
-        print(cycles)
-        for n in range(cycles):
+        for _ in range(cycles):
+            ecosystem.simulation_status = SimulationStatus.processing
+            n = ecosystem.days
             results[f"day {n + 1}"] = []
+            if not organisms:
+                results[f"day {n + 1}"].append(
+                    {
+                        "This is the end": "No organisms found in the ecosystem, you reach the end."
+                    }
+                )
+                ecosystem.simulation_status = SimulationStatus.finished
+                break
             for organism in organisms:
                 food_consumed = 0
                 possible_interactions = ACTIONS_BY_ORGANISM_TYPE[organism.type]
@@ -378,7 +388,7 @@ class EcoSystemService:
                         and organism.age >= organism.reproduction_age
                     ):
                         if not organism.pregnant:
-                            organism_to_reproduce = await self.session.scalars(
+                            organism_to_reproduce = await simulate_session.scalars(
                                 select(Organism).where(
                                     Organism.name == organism.name,
                                     Organism.id != organism.id,
@@ -553,11 +563,13 @@ class EcoSystemService:
                 if ecosystem.days % 3 == 0:
                     ecosystem.year += 1
 
-                    for entity in (*ecosystem.organisms, *ecosystem.plants):
-                        entity.age += 1
-            await self.session.commit()
-
-        ecosystem.simulation_status = SimulationStatus.finished
+                    for organism in ecosystem.organisms:
+                        organism.age += 1
+                    for plant in ecosystem.plants:
+                        plant.age += 1
+                await simulate_session.commit()
+            ecosystem.simulation_status = SimulationStatus.finished
+            await simulate_session.commit()
         serializable_result = make_json_serializable(results)
         results_to_bytes = json.dumps(serializable_result).encode("utf-8")
         new_simulation = Simulation(
@@ -565,10 +577,16 @@ class EcoSystemService:
             ecosystem_id=ecosystem_id,
             simulation_results=zlib.compress(results_to_bytes),
         )
-        self.session.add(new_simulation)
-        await self.session.commit()
+        simulate_session.add(new_simulation)
+        await simulate_session.commit()
 
-    async def read_simulation(self, ecosystem_name: str, simulation_id: UUID):
+    async def read_simulation(
+        self,
+        ecosystem_name: str,
+        simulation_id: UUID,
+        start: int | None = 1,
+        end: int | None = 1,
+    ):
         query = await self.session.execute(
             select(Ecosystem).where(Ecosystem.name == ecosystem_name)
         )
@@ -582,11 +600,31 @@ class EcoSystemService:
             raise ECOSYSTEM_ALREADY_IN_SIMULATION(ecosystem.name)
 
         simulation = await self.session.get(Simulation, simulation_id)
-
         if not simulation:
             raise
-        results_to_json = zlib.decompress(simulation.simulation_results)
-        return json.loads(results_to_json.decode("utf-8"))
+        results_to_json = json.loads(
+            zlib.decompress(simulation.simulation_results).decode("utf-8")
+        )
+
+        interval = {}
+
+        if not start or start < 0:
+            start = 0
+        elif start > len(results_to_json):
+            start = len(results_to_json)
+
+        if not end or end < 0:
+            end = len(results_to_json)
+        elif end > len(results_to_json):
+            end = len(results_to_json)
+
+        if start > end:
+            results_to_json = dict(reversed(results_to_json.items()))
+
+        keys = list(results_to_json.keys())
+        interval = {key: results_to_json[key] for key in keys[start:end]}
+
+        return JSONResponse(status_code=200, content=interval)
 
     async def remove_organism_from_a_ecosystem(
         self, ecosystem_id: UUID, organism_name_or_id: UUID | str

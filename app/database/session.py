@@ -47,3 +47,4 @@ async def get_session():
         raise RuntimeError("Sessionmaker not initialized. Call init_engine first.")
     async with _sessionmaker_global() as session:
         yield session
+        await session.close()

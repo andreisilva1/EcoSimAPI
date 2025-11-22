@@ -1,7 +1,7 @@
 import asyncio
 from uuid import uuid4
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Query
 
 from app.api.dependencies import EcoSystemServiceDep
 from app.api.schemas.organism import UpdateEcosystemOrganism
@@ -37,26 +37,29 @@ async def get_all_ecosystem_plants(
 )
 async def simulate(ecosystem_id: str, service: EcoSystemServiceDep, cycles: int = 1):
     simulation_id = uuid4()
-    if cycles > 1:
-        asyncio.create_task(
-            service.simulate(verify_uuid(ecosystem_id), simulation_id, cycles)
-        )
-        return {
-            "message": (
-                "Simulating the ecosystem. If no other simulation is blocking, "
-                f"you can check the result in a few seconds using this ID: {simulation_id}"
-            ),
-            "simulation_id": simulation_id,
-        }
-    else:
-        return await service.simulate(verify_uuid(ecosystem_id), simulation_id)
+    asyncio.create_task(
+        service.simulate(verify_uuid(ecosystem_id), simulation_id, cycles)
+    )
+    return {
+        "message": (
+            "Simulating the ecosystem. If no other simulation is blocking, "
+            f"you can check the result in a few seconds using this ID: {simulation_id}"
+        ),
+        "simulation_id": simulation_id,
+    }
 
 
 @router.get("/{simulation_id}")
 async def read_simulation(
-    service: EcoSystemServiceDep, ecosystem_name: str, simulation_id: str
+    service: EcoSystemServiceDep,
+    ecosystem_name: str,
+    simulation_id: str,
+    start: int | None = None,
+    end: int | None = None,
 ):
-    return await service.read_simulation(ecosystem_name, verify_uuid(simulation_id))
+    return await service.read_simulation(
+        ecosystem_name, verify_uuid(simulation_id), start, end
+    )
 
 
 @router.post("/create")
