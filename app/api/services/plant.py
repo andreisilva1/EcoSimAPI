@@ -7,10 +7,10 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.exceptions.exceptions import (
-    POLLINATORS_NOT_FOUND,
-    RESOURCE_NAME_ALREADY_EXISTS,
-    RESOURCE_NAME_NOT_FOUND,
-    RESOURCE_NAME_OR_ID_NOT_FOUND,
+    POLLINATORS_NOT_FOUND_ERROR,
+    RESOURCE_NAME_ALREADY_EXISTS_ERROR,
+    RESOURCE_NAME_NOT_FOUND_ERROR,
+    RESOURCE_NAME_OR_ID_NOT_FOUND_ERROR,
 )
 from app.api.schemas.plant import CreatePlant, UpdatePlant
 from app.database.enums import PlantType
@@ -38,7 +38,7 @@ class PlantService:
 
         plants = query.all()
         if not plants:
-            raise RESOURCE_NAME_NOT_FOUND("plant")
+            raise RESOURCE_NAME_NOT_FOUND_ERROR("plant")
 
         return JSONResponse(
             status_code=200, content=jsonable_encoder({"plants": plants})
@@ -59,7 +59,7 @@ class PlantService:
             )
         plant = plant.scalar_one_or_none()
         if not plant:
-            raise RESOURCE_NAME_OR_ID_NOT_FOUND("plant")
+            raise RESOURCE_NAME_OR_ID_NOT_FOUND_ERROR("plant")
         return plant
 
     async def verify_if_pollinator_exists(self, pollinator_name: str):
@@ -69,7 +69,7 @@ class PlantService:
 
         pollinators = result.scalars().all()
         if not pollinators:
-            raise POLLINATORS_NOT_FOUND(pollinator_name)
+            raise POLLINATORS_NOT_FOUND_ERROR(pollinator_name)
         return pollinators
 
     async def get_pollinators_and_convert_to_organisms(self, pollinators: str):
@@ -93,7 +93,7 @@ class PlantService:
     async def add(self, plant: CreatePlant, type: PlantType):
         existent_plant = await self.verify_if_plant_exists(plant.name)
         if existent_plant:
-            raise RESOURCE_NAME_ALREADY_EXISTS("plant")
+            raise RESOURCE_NAME_ALREADY_EXISTS_ERROR("plant")
         pollinators_converted = []
         if plant.pollinators:
             pollinators_converted = await self.get_pollinators_and_convert_to_organisms(
@@ -133,7 +133,7 @@ class PlantService:
         if "name" in update_infos.keys():
             existent_plant = await self.verify_if_plant_exists(update_infos["name"])
             if existent_plant:
-                raise RESOURCE_NAME_ALREADY_EXISTS("plant")
+                raise RESOURCE_NAME_ALREADY_EXISTS_ERROR("plant")
         for key, value in update_infos.items():
             if key == "pollinators":
                 update_infos[

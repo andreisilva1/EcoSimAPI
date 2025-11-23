@@ -8,10 +8,10 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.exceptions.exceptions import (
-    BLANK_UPDATE_FIELDS,
-    RESOURCE_ID_NOT_FOUND,
-    RESOURCE_NAME_ALREADY_EXISTS,
-    RESOURCE_NAME_NOT_FOUND,
+    BLANK_UPDATE_FIELDS_ERROR,
+    RESOURCE_ID_NOT_FOUND_ERROR,
+    RESOURCE_NAME_ALREADY_EXISTS_ERROR,
+    RESOURCE_NAME_NOT_FOUND_ERROR,
 )
 from app.api.schemas.organism import CreateOrganism, UpdateOrganism
 from app.database.enums import (
@@ -47,7 +47,7 @@ class OrganismService:
 
         organisms = query.all()
         if not organisms:
-            raise RESOURCE_NAME_NOT_FOUND("organism")
+            raise RESOURCE_NAME_NOT_FOUND_ERROR("organism")
         return organisms
 
     async def verify_if_organism_exists(self, organism_name):
@@ -62,7 +62,7 @@ class OrganismService:
         )
         organism = organism.scalar_one_or_none()
         if not organism:
-            raise RESOURCE_ID_NOT_FOUND("organism")
+            raise RESOURCE_ID_NOT_FOUND_ERROR("organism")
 
         return organism
 
@@ -77,7 +77,7 @@ class OrganismService:
     ):
         existent_organism = await self.verify_if_organism_exists(create_organism.name)
         if existent_organism:
-            raise RESOURCE_NAME_ALREADY_EXISTS("organism")
+            raise RESOURCE_NAME_ALREADY_EXISTS_ERROR("organism")
 
         predators_orm, preys_orm = [], []
         if create_organism.predator:
@@ -175,7 +175,7 @@ class OrganismService:
             if value is not None:
                 update[key] = value
         if not update:
-            raise BLANK_UPDATE_FIELDS()
+            raise BLANK_UPDATE_FIELDS_ERROR()
         for key, value in update.items():
             try:
                 setattr(organism, key, value)
@@ -191,7 +191,7 @@ class OrganismService:
     async def delete(self, organism_id: UUID):
         organism = await self.get_organism_by_id(organism_id)
         if not organism:
-            raise RESOURCE_ID_NOT_FOUND("organism")
+            raise RESOURCE_ID_NOT_FOUND_ERROR("organism")
 
         await self.session.delete(organism)
         await self.session.commit()

@@ -3,7 +3,7 @@ from fastapi.responses import JSONResponse
 from sqlalchemy import func, select
 
 from app.api.dependencies import SessionDep
-from app.api.exceptions.exceptions import ALL_DEFAULTS_ALREADY_EXISTS
+from app.api.exceptions.exceptions import ALL_DEFAULTS_ALREADY_EXISTS_ERROR
 from app.api.utils.defaults import return_defaults
 from app.database.models import Organism, Plant
 
@@ -56,7 +56,7 @@ async def add_default_organisms_and_plants(session: SessionDep):
 
     await session.commit()
     if not organisms_added and not plants_added:
-        raise ALL_DEFAULTS_ALREADY_EXISTS("organisms and plants")
+        raise ALL_DEFAULTS_ALREADY_EXISTS_ERROR("organisms and plants")
 
     return JSONResponse(
         status_code=200,

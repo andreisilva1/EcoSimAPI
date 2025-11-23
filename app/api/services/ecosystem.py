@@ -12,12 +12,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.api.exceptions.exceptions import (
-    BLANK_UPDATE_FIELDS,
-    ECOSYSTEM_ALREADY_IN_SIMULATION,
-    RESOURCE_ID_NOT_FOUND,
-    RESOURCE_NAME_ALREADY_EXISTS,
-    RESOURCE_NAME_NOT_FOUND,
-    RESOURCE_NOT_FOUND_IN_RELATIONSHIP,
+    BLANK_UPDATE_FIELDS_ERROR,
+    ECOSYSTEM_ALREADY_IN_SIMULATION_ERROR,
+    RESOURCE_ID_NOT_FOUND_ERROR,
+    RESOURCE_NAME_ALREADY_EXISTS_ERROR,
+    RESOURCE_NAME_NOT_FOUND_ERROR,
+    RESOURCE_NOT_FOUND_IN_RELATIONSHIP_ERROR,
 )
 from app.api.interactions.interaction_functions import (
     collect_and_transport_nectar,
@@ -81,7 +81,7 @@ class EcoSystemService:
         )
         ecosystem = ecosystem.scalar_one_or_none()
         if not ecosystem:
-            raise RESOURCE_ID_NOT_FOUND("ecosystem")
+            raise RESOURCE_ID_NOT_FOUND_ERROR("ecosystem")
         return JSONResponse(
             status_code=200,
             content=jsonable_encoder({"all_organisms": ecosystem.organisms}),
@@ -121,7 +121,7 @@ class EcoSystemService:
         )
         existent_ecosystem = query.scalar_one_or_none()
         if existent_ecosystem:
-            raise RESOURCE_NAME_ALREADY_EXISTS("ecosystem")
+            raise RESOURCE_NAME_ALREADY_EXISTS_ERROR("ecosystem")
         new_eco_system = Ecosystem(id=uuid4(), **ecosystem.model_dump())
         self.session.add(new_eco_system)
         await self.session.commit()
@@ -139,7 +139,7 @@ class EcoSystemService:
             if value:
                 updates[key] = value
         if not updates:
-            raise BLANK_UPDATE_FIELDS()
+            raise BLANK_UPDATE_FIELDS_ERROR()
         for key, value in updates.items():
             setattr(ecosystem, key, value)
         await self.session.commit()
@@ -207,7 +207,7 @@ class EcoSystemService:
         plant = await self.extract_plant_by_name(plant_name)
 
         if not plant:
-            raise RESOURCE_NAME_NOT_FOUND("plant")
+            raise RESOURCE_NAME_NOT_FOUND_ERROR("plant")
 
         new_plant_to_this_ecosystem = Plant(
             **plant.model_dump(exclude=["id", "health", "age"]), id=uuid4()
@@ -230,7 +230,7 @@ class EcoSystemService:
         organism = await self.extract_organism_by_name(organism_name)
 
         if not organism:
-            raise RESOURCE_NAME_NOT_FOUND("organism")
+            raise RESOURCE_NAME_NOT_FOUND_ERROR("organism")
 
         new_organism_to_this_ecosystem = Organism(
             **organism.model_dump(exclude=["id"]),
@@ -257,9 +257,11 @@ class EcoSystemService:
             ecosystem.id, organism_name
         )
         if not ecosystem:
-            raise RESOURCE_ID_NOT_FOUND("ecosystem")
+            raise RESOURCE_ID_NOT_FOUND_ERROR("ecosystem")
         if not organisms:
-            raise RESOURCE_NOT_FOUND_IN_RELATIONSHIP(one="ecosystem", many="orgnaism")
+            raise RESOURCE_NOT_FOUND_IN_RELATIONSHIP_ERROR(
+                one="ecosystem", many="orgnaism"
+            )
 
         updated_fields = {}
         for key, value in updated_organism.model_dump().items():
@@ -304,10 +306,12 @@ class EcoSystemService:
             ecosystem.id, plant_name
         )
         if not ecosystem:
-            raise RESOURCE_ID_NOT_FOUND("ecosystem")
+            raise RESOURCE_ID_NOT_FOUND_ERROR("ecosystem")
 
         if not plants:
-            raise RESOURCE_NOT_FOUND_IN_RELATIONSHIP(one="ecosystem", many="plant")
+            raise RESOURCE_NOT_FOUND_IN_RELATIONSHIP_ERROR(
+                one="ecosystem", many="plant"
+            )
 
         updated_fields = {}
         for key, value in updated_plant.model_dump().items():
@@ -349,13 +353,13 @@ class EcoSystemService:
             simulate_session = session
         ecosystem = await self.get(ecosystem_id)
         if not ecosystem:
-            raise RESOURCE_ID_NOT_FOUND("ecosystem")
+            raise RESOURCE_ID_NOT_FOUND_ERROR("ecosystem")
         ecosystem.simulation_status = SimulationStatus.finished
         await simulate_session.commit()
         await simulate_session.refresh(ecosystem)
 
         if ecosystem.simulation_status == SimulationStatus.processing:
-            raise ECOSYSTEM_ALREADY_IN_SIMULATION(ecosystem.name)
+            raise ECOSYSTEM_ALREADY_IN_SIMULATION_ERROR(ecosystem.name)
 
         results = {}
         organisms: List[Organism] = ecosystem.organisms
@@ -594,10 +598,10 @@ class EcoSystemService:
         ecosystem = query.scalar_one_or_none()
 
         if not ecosystem:
-            raise RESOURCE_NAME_NOT_FOUND(ecosystem_name)
+            raise RESOURCE_NAME_NOT_FOUND_ERROR(ecosystem_name)
 
         if ecosystem.simulation_status == SimulationStatus.processing:
-            raise ECOSYSTEM_ALREADY_IN_SIMULATION(ecosystem.name)
+            raise ECOSYSTEM_ALREADY_IN_SIMULATION_ERROR(ecosystem.name)
 
         simulation = await self.session.get(Simulation, simulation_id)
         if not simulation:
@@ -644,7 +648,9 @@ class EcoSystemService:
         ]
 
         if not organisms_to_delete:
-            raise RESOURCE_NOT_FOUND_IN_RELATIONSHIP(one="ecosystem", many="organism")
+            raise RESOURCE_NOT_FOUND_IN_RELATIONSHIP_ERROR(
+                one="ecosystem", many="organism"
+            )
 
         for organism in organisms_to_delete:
             ecosystem.organisms.remove(organism)
@@ -671,7 +677,9 @@ class EcoSystemService:
         ]
 
         if not plants_to_delete:
-            raise RESOURCE_NOT_FOUND_IN_RELATIONSHIP(one="ecosystem", many="plant")
+            raise RESOURCE_NOT_FOUND_IN_RELATIONSHIP_ERROR(
+                one="ecosystem", many="plant"
+            )
         for plant in plants_to_delete:
             ecosystem.plants.remove(plant)
             await self.session.delete(plant)
@@ -685,7 +693,7 @@ class EcoSystemService:
             await self.session.delete(ecosystem)
             await self.session.commit()
             return Response(status_code=204)
-        raise RESOURCE_ID_NOT_FOUND("ecosystem")
+        raise RESOURCE_ID_NOT_FOUND_ERROR("ecosystem")
 
     async def death_cause_and_delete_organism(self, organism: Organism | Plant):
         await self.session.delete(organism)

@@ -1,7 +1,7 @@
 from fastapi import HTTPException, status
 
 
-class RESOURCE_ID_NOT_FOUND(HTTPException):
+class RESOURCE_ID_NOT_FOUND_ERROR(HTTPException):
     def __init__(self, resource_name: str):
         super().__init__(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -9,7 +9,7 @@ class RESOURCE_ID_NOT_FOUND(HTTPException):
         )
 
 
-class RESOURCE_NAME_ALREADY_EXISTS(HTTPException):
+class RESOURCE_NAME_ALREADY_EXISTS_ERROR(HTTPException):
     def __init__(self, resource_name: str):
         super().__init__(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -17,7 +17,7 @@ class RESOURCE_NAME_ALREADY_EXISTS(HTTPException):
         )
 
 
-class RESOURCE_NAME_NOT_FOUND(HTTPException):
+class RESOURCE_NAME_NOT_FOUND_ERROR(HTTPException):
     def __init__(self, resource_name: str):
         super().__init__(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -25,7 +25,7 @@ class RESOURCE_NAME_NOT_FOUND(HTTPException):
         )
 
 
-class RESOURCE_NAME_OR_ID_NOT_FOUND(HTTPException):
+class RESOURCE_NAME_OR_ID_NOT_FOUND_ERROR(HTTPException):
     def __init__(self, resource_name: str):
         super().__init__(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -33,7 +33,7 @@ class RESOURCE_NAME_OR_ID_NOT_FOUND(HTTPException):
         )
 
 
-class BLANK_UPDATE_FIELDS(HTTPException):
+class BLANK_UPDATE_FIELDS_ERROR(HTTPException):
     def __init__(self):
         super().__init__(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -41,7 +41,7 @@ class BLANK_UPDATE_FIELDS(HTTPException):
         )
 
 
-class RESOURCE_NOT_FOUND_IN_RELATIONSHIP(HTTPException):
+class RESOURCE_NOT_FOUND_IN_RELATIONSHIP_ERROR(HTTPException):
     def __init__(self, one: str, many: str):
         super().__init__(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -49,7 +49,7 @@ class RESOURCE_NOT_FOUND_IN_RELATIONSHIP(HTTPException):
         )
 
 
-class POLLINATORS_NOT_FOUND(HTTPException):
+class POLLINATORS_NOT_FOUND_ERROR(HTTPException):
     def __init__(self, pollinator_name: str):
         super().__init__(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -57,7 +57,7 @@ class POLLINATORS_NOT_FOUND(HTTPException):
         )
 
 
-class ALL_DEFAULTS_ALREADY_EXISTS(HTTPException):
+class ALL_DEFAULTS_ALREADY_EXISTS_ERROR(HTTPException):
     def __init__(self, resource_name: str):
         super().__init__(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -65,7 +65,7 @@ class ALL_DEFAULTS_ALREADY_EXISTS(HTTPException):
         )
 
 
-class ECOSYSTEM_ALREADY_IN_SIMULATION(HTTPException):
+class ECOSYSTEM_ALREADY_IN_SIMULATION_ERROR(HTTPException):
     def __init__(self, resource_name: str):
         super().__init__(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -73,7 +73,7 @@ class ECOSYSTEM_ALREADY_IN_SIMULATION(HTTPException):
         )
 
 
-class SIMULATION_NOT_EXISTS(HTTPException):
+class SIMULATION_NOT_EXISTS_ERROR(HTTPException):
     def __init__(self, resource_name: str):
         super().__init__(
             status_code=status.HTTP_400_BAD_REQUEST,
