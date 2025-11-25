@@ -13,7 +13,7 @@ from app.api.exceptions.exceptions import (
     RESOURCE_NAME_OR_ID_NOT_FOUND_ERROR,
 )
 from app.api.schemas.plant import CreatePlant, UpdatePlant
-from app.database.enums import PlantType
+from app.database.enums import EnvironmentType, PlantType
 from app.database.models import Organism, Plant
 
 
@@ -90,7 +90,12 @@ class PlantService:
         plant = plant.scalar_one_or_none()
         return plant
 
-    async def add(self, plant: CreatePlant, type: PlantType):
+    async def add(
+        self,
+        plant: CreatePlant,
+        type: PlantType,
+        environment_type: EnvironmentType | None,
+    ):
         existent_plant = await self.verify_if_plant_exists(plant.name)
         if existent_plant:
             raise RESOURCE_NAME_ALREADY_EXISTS_ERROR("plant")
@@ -104,6 +109,7 @@ class PlantService:
             id=uuid4(),
             **plant.model_dump(exclude=["pollinators"]),
             type=type,
+            environment_type=environment_type,
         )
         new_plant.pollinators.extend(
             [

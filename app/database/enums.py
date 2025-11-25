@@ -53,3 +53,5 @@ class EnvironmentType(str, Enum):
     mountain = "MOUNTAIN"
     taiga = "TAIGA"
     tundra = "TUNDRA"
+    random = "RANDOM"
+    null = "NULL"

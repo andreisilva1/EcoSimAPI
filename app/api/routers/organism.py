@@ -12,6 +12,7 @@ from app.api.utils.utils import verify_uuid
 from app.database.enums import (
     ActivityCycle,
     DietType,
+    EnvironmentType,
     OrganismType,
     SocialBehavior,
     Speed,
@@ -39,12 +40,19 @@ async def create_organism(
     type: OrganismType,
     diet_type: DietType,
     service: OrganismServiceDep,
+    environment_type: Optional[EnvironmentType] = None,
     activity_cycle: Optional[ActivityCycle] = None,
     speed: Optional[Speed] = Speed.normal,
     social_behavior: Optional[SocialBehavior] = None,
 ):
     return await service.add(
-        organism, type, diet_type, activity_cycle, speed, social_behavior
+        organism,
+        type,
+        diet_type,
+        activity_cycle,
+        speed,
+        social_behavior,
+        environment_type,
     )
 
 

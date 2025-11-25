@@ -34,7 +34,12 @@ from app.api.schemas.ecosystem import (
 from app.api.schemas.organism import UpdateEcosystemOrganism
 from app.api.schemas.plant import UpdateEcosystemPlant
 from app.api.utils.utils import make_json_serializable
-from app.database.enums import ActivityCycle, OrganismType, SimulationStatus
+from app.database.enums import (
+    ActivityCycle,
+    EnvironmentType,
+    OrganismType,
+    SimulationStatus,
+)
 from app.database.interactions_list import ACTIONS_BY_ORGANISM_TYPE
 from app.database.models import Ecosystem, Organism, Plant, Simulation
 from app.database.session import get_sessionmaker
@@ -115,14 +120,18 @@ class EcoSystemService:
                     pollination_targets_in_the_ecosystem.append(plant)
         return pollination_targets_in_the_ecosystem
 
-    async def add(self, ecosystem: CreateEcoSystem):
+    async def add(
+        self, ecosystem: CreateEcoSystem, environment_type: EnvironmentType | None
+    ):
         query = await self.session.execute(
             select(Ecosystem).where((func.lower(Ecosystem.name) == ecosystem.name))
         )
         existent_ecosystem = query.scalar_one_or_none()
         if existent_ecosystem:
             raise RESOURCE_NAME_ALREADY_EXISTS_ERROR("ecosystem")
-        new_eco_system = Ecosystem(id=uuid4(), **ecosystem.model_dump())
+        new_eco_system = Ecosystem(
+            id=uuid4(), **ecosystem.model_dump(), environment_type=environment_type
+        )
         self.session.add(new_eco_system)
         await self.session.commit()
         return JSONResponse(

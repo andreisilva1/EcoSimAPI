@@ -8,6 +8,7 @@ from sqlmodel import Field, Relationship, SQLModel
 from .enums import (
     ActivityCycle,
     DietType,
+    EnvironmentType,
     OrganismType,
     PlantType,
     SimulationStatus,
@@ -84,6 +85,8 @@ class Organism(SQLModel, table=True):
         default=SocialBehavior.solitary
     )  # solitary, pack, herd
 
+    environment_type: EnvironmentType | None = Field(nullable=True)
+
     ecosystem_id: UUID = Field(foreign_key="ecosystem.id", nullable=True)
     ecosystem: "Ecosystem" = Relationship(
         back_populates="organisms", sa_relationship_kwargs={"lazy": "selectin"}
@@ -108,6 +111,8 @@ class Plant(SQLModel, table=True):
     max_age: Optional[float] = Field(default=1)
     reproduction_age: Optional[float] = Field(default=0)
     fertility_rate: Optional[int] = Field(default=0)  # number of sements by cycle
+
+    environment_type: EnvironmentType | None = Field(nullable=True)
 
     # Needs
     water_need: Optional[float] = Field(default=0)
@@ -146,5 +151,7 @@ class Ecosystem(SQLModel, table=True):
         back_populates="ecosystem",
         sa_relationship_kwargs={"lazy": "selectin", "cascade": "all, delete-orphan"},
     )
+
+    environment_type: EnvironmentType | None = Field(nullable=True)
     year: Optional[int] = 0
     simulation_status: SimulationStatus = Field(default=SimulationStatus.finished)

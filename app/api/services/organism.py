@@ -17,6 +17,7 @@ from app.api.schemas.organism import CreateOrganism, UpdateOrganism
 from app.database.enums import (
     ActivityCycle,
     DietType,
+    EnvironmentType,
     OrganismType,
     SocialBehavior,
     Speed,
@@ -74,6 +75,7 @@ class OrganismService:
         activity_cycle: Optional[ActivityCycle],
         speed: Optional[Speed],
         social_behavior: Optional[SocialBehavior],
+        environment_type: EnvironmentType | None,
     ):
         existent_organism = await self.verify_if_organism_exists(create_organism.name)
         if existent_organism:
@@ -140,6 +142,7 @@ class OrganismService:
             social_behavior=SocialBehavior(social_behavior)
             if social_behavior
             else SocialBehavior.pack,
+            environment_type=environment_type,
         )
 
         for target in pollination_target:

@@ -1,8 +1,10 @@
+from typing import Optional
+
 from fastapi import APIRouter
 
 from app.api.dependencies import PlantServiceDep
 from app.api.schemas.plant import CreatePlant, UpdatePlant
-from app.database.enums import PlantType
+from app.database.enums import EnvironmentType, PlantType
 
 router = APIRouter(prefix="/plant", tags=["Plants"])
 
@@ -21,8 +23,13 @@ async def get_plants_by_name(search: str, service: PlantServiceDep):
 
 
 @router.post("/create")
-async def create_plant(plant: CreatePlant, type: PlantType, service: PlantServiceDep):
-    return await service.add(plant, type)
+async def create_plant(
+    plant: CreatePlant,
+    type: PlantType,
+    service: PlantServiceDep,
+    environment_type: Optional[EnvironmentType] = None,
+):
+    return await service.add(plant, type, environment_type)
 
 
 @router.patch("/{plant_name_or_id}/update")

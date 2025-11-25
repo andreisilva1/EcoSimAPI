@@ -1,12 +1,14 @@
 import asyncio
+from typing import Optional
 from uuid import uuid4
 
-from fastapi import APIRouter, Query
+from fastapi import APIRouter
 
 from app.api.dependencies import EcoSystemServiceDep
 from app.api.schemas.organism import UpdateEcosystemOrganism
 from app.api.schemas.plant import UpdateEcosystemPlant
 from app.api.utils.utils import verify_uuid
+from app.database.enums import EnvironmentType
 
 from ..schemas.ecosystem import CreateEcoSystem, UpdateEcoSystem
 
@@ -63,8 +65,12 @@ async def read_simulation(
 
 
 @router.post("/create")
-async def create_eco_system(ecosystem: CreateEcoSystem, service: EcoSystemServiceDep):
-    return await service.add(ecosystem)
+async def create_eco_system(
+    ecosystem: CreateEcoSystem,
+    service: EcoSystemServiceDep,
+    environment_type: Optional[EnvironmentType] = None,
+):
+    return await service.add(ecosystem, environment_type)
 
 
 @router.post("/organism/add")
