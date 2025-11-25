@@ -43,3 +43,13 @@ class Speed(str, Enum):
 class SimulationStatus(str, Enum):
     processing = "PROCESSING"
     finished = "FINISHED"
+
+
+class EnvironmentType(str, Enum):
+    desert = "DESERT"
+    rainforest = "RAINFOREST"
+    savanna = "SAVANNA"
+    swamp = "SWAMP"
+    mountain = "MOUNTAIN"
+    taiga = "TAIGA"
+    tundra = "TUNDRA"
